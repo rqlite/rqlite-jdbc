@@ -1,9 +1,0 @@
-.DS_Store
-.idea
-.gradle
-/build/
-
-gradle/
-gradlew*
-
-out.*

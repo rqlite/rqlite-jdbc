@@ -1,0 +1,346 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="1860c7cd-3ba9-4c23-9e90-b8a07cf547b8" name="Changes" comment="- Initial commit.">
+      <change beforePath="$PROJECT_DIR$/.github/workflows/main.yml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/LICENSE" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build.gradle.kts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gradle.properties" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/org-config.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/settings.gradle.kts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/client/L4Client.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/client/L4Err.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/client/L4Http.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/client/L4Json.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/client/L4Level.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/client/L4Options.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/client/L4Response.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/client/L4Result.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/client/L4Statement.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/jdbc/L4Blob.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/jdbc/L4Block.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/jdbc/L4Clob.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/jdbc/L4Conn.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/jdbc/L4Db.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/jdbc/L4DbMeta.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/jdbc/L4Driver.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/jdbc/L4Err.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/jdbc/L4Jdbc.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/jdbc/L4Log.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/jdbc/L4NClob.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/jdbc/L4Ps.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/jdbc/L4PsPm.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/jdbc/L4Rs.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/jdbc/L4RsMeta.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/jdbc/L4St.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/json/Json.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/json/JsonArray.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/json/JsonHandler.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/json/JsonLiteral.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/json/JsonNumber.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/json/JsonObject.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/json/JsonParser.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/json/JsonString.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/json/JsonValue.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/json/JsonWriter.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/json/Location.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/json/ParseException.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/json/PrettyPrint.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/json/WriterConfig.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/io/rqlite/json/WritingBuffer.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/META-INF/services/java.sql.Driver" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/io/rqlite/jdbc/version" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/io/rqlite/JsonTest.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/io/rqlite/L4ClientTest.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/io/rqlite/L4DbMetaTest.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/io/rqlite/L4DbTest.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/io/rqlite/L4DriverTest.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/io/rqlite/L4JdbcTest.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/io/rqlite/L4PsTest.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/io/rqlite/L4RsTest.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/io/rqlite/L4StTest.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/io/rqlite/L4StatementTest.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/io/rqlite/L4Tests.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/io/rqlite/dao/DeviceDao.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/io/rqlite/dao/LocationDao.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/io/rqlite/dao/UserDao.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/io/rqlite/schema/Device.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/io/rqlite/schema/Location.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/io/rqlite/schema/User.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/resources/example.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/resources/l4-schema.yml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/testing.md" beforeDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ExternalProjectsData">
+    <projectState path="$PROJECT_DIR$">
+      <ProjectState />
+    </projectState>
+  </component>
+  <component name="ExternalProjectsManager">
+    <system id="GRADLE">
+      <state>
+        <task path="$PROJECT_DIR$">
+          <activation />
+        </task>
+        <projects_view>
+          <tree_state>
+            <expand>
+              <path>
+                <item name="" type="6a2764b6:ExternalProjectsStructure$RootNode" />
+                <item name="rqlite-jdbc" type="f1a62948:ProjectNode" />
+              </path>
+              <path>
+                <item name="" type="6a2764b6:ExternalProjectsStructure$RootNode" />
+                <item name="rqlite-jdbc" type="f1a62948:ProjectNode" />
+                <item name="Tasks" type="e4a08cd1:TasksNode" />
+              </path>
+              <path>
+                <item name="" type="6a2764b6:ExternalProjectsStructure$RootNode" />
+                <item name="rqlite-jdbc" type="f1a62948:ProjectNode" />
+                <item name="Tasks" type="e4a08cd1:TasksNode" />
+                <item name="build" type="c8890929:TasksNode$1" />
+              </path>
+            </expand>
+            <select />
+          </tree_state>
+        </projects_view>
+      </state>
+    </system>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitToolBoxStore">
+    <option name="recentBranches">
+      <RecentBranches>
+        <option name="branchesForRepo">
+          <list>
+            <RecentBranchesForRepo>
+              <option name="branches">
+                <list>
+                  <RecentBranch>
+                    <option name="branchName" value="org-config" />
+                    <option name="lastUsedInstant" value="1748575349" />
+                  </RecentBranch>
+                  <RecentBranch>
+                    <option name="branchName" value="master" />
+                    <option name="lastUsedInstant" value="1748575274" />
+                  </RecentBranch>
+                </list>
+              </option>
+              <option name="repositoryRootUrl" value="file://$PROJECT_DIR$" />
+            </RecentBranchesForRepo>
+          </list>
+        </option>
+      </RecentBranches>
+    </option>
+  </component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "associatedIndex": 3
+}]]></component>
+  <component name="ProjectId" id="2xnSjGpRobChzZoLpnBeAhLmRKB" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Gradle.L4DbMetaTest.executor": "Run",
+    "Gradle.L4DriverTest.executor": "Run",
+    "Gradle.rqlite-jdbc [assemble].executor": "Run",
+    "Gradle.rqlite-jdbc [build].executor": "Run",
+    "Gradle.rqlite-jdbc [clean].executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "git-widget-placeholder": "org-config",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "/Users/jjzazuet/code/rqlite-jdbc/build.gradle.kts",
+    "settings.editor.selected.configurable": "editor.preferences.fonts.default"
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/src/main/resources/io/rqlite/jdbc" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Gradle.rqlite-jdbc [build]">
+    <configuration name="L4DbMetaTest" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
+      <ExternalSystemSettings>
+        <option name="executionName" />
+        <option name="externalProjectPath" value="$PROJECT_DIR$" />
+        <option name="externalSystemIdString" value="GRADLE" />
+        <option name="scriptParameters" value="" />
+        <option name="taskDescriptions">
+          <list />
+        </option>
+        <option name="taskNames">
+          <list>
+            <option value=":test" />
+            <option value="--tests" />
+            <option value="&quot;io.rqlite.L4DbMetaTest&quot;" />
+          </list>
+        </option>
+        <option name="vmOptions" />
+      </ExternalSystemSettings>
+      <ExternalSystemDebugServerProcess>false</ExternalSystemDebugServerProcess>
+      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
+      <DebugAllEnabled>false</DebugAllEnabled>
+      <RunAsTest>true</RunAsTest>
+      <method v="2" />
+    </configuration>
+    <configuration name="L4DriverTest" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
+      <ExternalSystemSettings>
+        <option name="executionName" />
+        <option name="externalProjectPath" value="$PROJECT_DIR$" />
+        <option name="externalSystemIdString" value="GRADLE" />
+        <option name="scriptParameters" value="" />
+        <option name="taskDescriptions">
+          <list />
+        </option>
+        <option name="taskNames">
+          <list>
+            <option value=":test" />
+            <option value="--tests" />
+            <option value="&quot;io.rqlite.L4DriverTest&quot;" />
+          </list>
+        </option>
+        <option name="vmOptions" />
+      </ExternalSystemSettings>
+      <ExternalSystemDebugServerProcess>false</ExternalSystemDebugServerProcess>
+      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
+      <DebugAllEnabled>false</DebugAllEnabled>
+      <RunAsTest>true</RunAsTest>
+      <method v="2" />
+    </configuration>
+    <configuration name="rqlite-jdbc [assemble]" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
+      <ExternalSystemSettings>
+        <option name="executionName" />
+        <option name="externalProjectPath" value="$PROJECT_DIR$" />
+        <option name="externalSystemIdString" value="GRADLE" />
+        <option name="scriptParameters" />
+        <option name="taskDescriptions">
+          <list />
+        </option>
+        <option name="taskNames">
+          <list>
+            <option value="assemble" />
+          </list>
+        </option>
+        <option name="vmOptions" />
+      </ExternalSystemSettings>
+      <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>
+      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
+      <DebugAllEnabled>false</DebugAllEnabled>
+      <RunAsTest>false</RunAsTest>
+      <method v="2" />
+    </configuration>
+    <configuration name="rqlite-jdbc [build]" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
+      <ExternalSystemSettings>
+        <option name="executionName" />
+        <option name="externalProjectPath" value="$PROJECT_DIR$" />
+        <option name="externalSystemIdString" value="GRADLE" />
+        <option name="scriptParameters" />
+        <option name="taskDescriptions">
+          <list />
+        </option>
+        <option name="taskNames">
+          <list>
+            <option value="build" />
+          </list>
+        </option>
+        <option name="vmOptions" />
+      </ExternalSystemSettings>
+      <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>
+      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
+      <DebugAllEnabled>false</DebugAllEnabled>
+      <RunAsTest>false</RunAsTest>
+      <method v="2" />
+    </configuration>
+    <configuration name="rqlite-jdbc [clean]" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
+      <ExternalSystemSettings>
+        <option name="executionName" />
+        <option name="externalProjectPath" value="$PROJECT_DIR$" />
+        <option name="externalSystemIdString" value="GRADLE" />
+        <option name="scriptParameters" />
+        <option name="taskDescriptions">
+          <list />
+        </option>
+        <option name="taskNames">
+          <list>
+            <option value="clean" />
+          </list>
+        </option>
+        <option name="vmOptions" />
+      </ExternalSystemSettings>
+      <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>
+      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
+      <DebugAllEnabled>false</DebugAllEnabled>
+      <RunAsTest>false</RunAsTest>
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="JetRunConfigurationType">
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="KotlinStandaloneScriptRunConfigurationType">
+      <option name="filePath" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Gradle.rqlite-jdbc [build]" />
+        <item itemvalue="Gradle.rqlite-jdbc [clean]" />
+        <item itemvalue="Gradle.L4DbMetaTest" />
+        <item itemvalue="Gradle.rqlite-jdbc [assemble]" />
+        <item itemvalue="Gradle.L4DriverTest" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="1860c7cd-3ba9-4c23-9e90-b8a07cf547b8" name="Changes" comment="" />
+      <created>1699075724450</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1699075724450</updated>
+    </task>
+    <task id="LOCAL-00001" summary="- Initial commit.">
+      <option name="closed" value="true" />
+      <created>1748574839872</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1748574839872</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
+    <servers />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="- Initial commit." />
+    <option name="LAST_COMMIT_MESSAGE" value="- Initial commit." />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/test/java/io/rqlite/L4DbMetaTest.java</url>
+          <line>135</line>
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
+  </component>
+</project>

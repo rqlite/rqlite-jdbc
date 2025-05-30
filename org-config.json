@@ -1,0 +1,27 @@
+{
+  "orgId": "rqlite",
+  "snapshotsRepo": {
+    "id": "SonatypeOSSSnapshots",
+    "url": "https://oss.sonatype.org/content/repositories/snapshots/",
+    "usernameEnvProperty": "SONATYPE_USER",
+    "passwordEnvProperty": "SONATYPE_PASSWORD"
+  },
+  "releasesRepo": {
+    "id": "SonatypeOSSStaging",
+    "url": "https://oss.sonatype.org/service/local/staging/deploy/maven2/",
+    "usernameEnvProperty": "SONATYPE_USER",
+    "passwordEnvProperty": "SONATYPE_PASSWORD"
+  },
+  "publishing": {
+    "id": "rqlite",
+    "devId": "rqlite",
+    "devContact": "The rqlite authors",
+    "devEmail": "philip.otoole@yahoo.com",
+    "mavenSigningKeyEnvProperty": "MAVEN_SIGNING_PRV"
+  },
+  "devConfig": {
+    "versions": {
+      "j8Spec": "io.github.j8spec:j8spec:3.0.1"
+    }
+  }
+}
