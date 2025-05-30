@@ -140,8 +140,8 @@ Create a file with the following content at `~/.gsOrgConfig.json`:
 
 ```
 {
-  "orgId": "vacco-oss",
-  "orgConfigUrl": "http://56db25d3f6c39937b48e-6eaf716421c53330be45fa9d36560381.r85.cf2.rackcdn.com/org-config/vacco.json"
+  "orgId": "rqlite",
+  "orgConfigUrl": "https://raw.githubusercontent.com/rqlite/rqlite-jdbc/refs/heads/org-config/org-config.json"
 }
 ```
 
