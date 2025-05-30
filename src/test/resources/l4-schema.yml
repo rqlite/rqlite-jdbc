@@ -1,0 +1,54 @@
+databaseChangeLog:
+    - changeSet:
+          id: tbl_User
+          author: generated
+          changes:
+              - sql:
+                    sql: |
+                        CREATE TABLE User (
+                            uid INTEGER NOT NULL PRIMARY KEY,
+                            email VARCHAR(256) NOT NULL,
+                            nickName VARCHAR(256) NOT NULL
+                        );
+    - changeSet:
+          id: unq_User_pk
+          author: generated
+          changes:
+              - sql:
+                    sql: CREATE UNIQUE INDEX unq_User_pk ON User (email);
+    - changeSet:
+          id: tbl_Device
+          author: generated
+          changes:
+              - sql:
+                    sql: |
+                        CREATE TABLE Device (
+                            did INTEGER NOT NULL PRIMARY KEY,
+                            uid INTEGER NOT NULL,
+                            number INTEGER NOT NULL,
+                            FOREIGN KEY (uid) REFERENCES User (uid)
+                        );
+    - changeSet:
+          id: unq_Device_pk
+          author: generated
+          changes:
+              - sql:
+                    sql: CREATE UNIQUE INDEX unq_Device_pk ON Device (uid, number);
+    - changeSet:
+          id: tbl_Location
+          author: generated
+          changes:
+              - sql:
+                    sql: |
+                        CREATE TABLE Location (
+                            lid INTEGER NOT NULL PRIMARY KEY,
+                            did INTEGER NOT NULL,
+                            geoHash8 VARCHAR(32) NOT NULL,
+                            FOREIGN KEY (did) REFERENCES Device (did)
+                        );
+    - changeSet:
+        id: unq_Location_pk
+        author: generated
+        changes:
+          - sql:
+              sql: CREATE UNIQUE INDEX unq_Location_pk ON Location (did, geoHash8);
