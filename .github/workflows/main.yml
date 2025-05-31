@@ -9,6 +9,6 @@ jobs:
         with:
           orgConfig: https://raw.githubusercontent.com/rqlite/rqlite-jdbc/refs/heads/org-config/org-config.json
         env:
-          SONATYPE_USER: ${{secrets.SONATYPE_USER}}
-          SONATYPE_PASSWORD: ${{secrets.SONATYPE_PASSWORD}}
-          MAVEN_SIGNING_PRV: ${{secrets.MAVEN_SIGNING_PRV}}
+          CENTRAL_PORTAL_USER: ${{secrets.SONATYPE_USER}}
+          CENTRAL_PORTAL_PASSWORD: ${{secrets.CENTRAL_PORTAL_PASSWORD}}
+          MAVEN_SIGNING_KEY: ${{secrets.MAVEN_SIGNING_KEY}}
