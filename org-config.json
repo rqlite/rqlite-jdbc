@@ -15,7 +15,7 @@
     "method": "PortalPublisherApiManual"
   },
   "publishing": {
-    "id": "rqlite",
+    "id": "Rqlite",
     "devId": "rqlite",
     "devContact": "The rqlite authors",
     "devEmail": "philip.otoole@yahoo.com",
