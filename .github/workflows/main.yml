@@ -5,7 +5,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: vaccovecrana/gitflow-oss-java-slim@1.0.1
+      - uses: vaccovecrana/gitflow-oss-java-slim@1.5.1
         with:
           orgConfig: https://raw.githubusercontent.com/rqlite/rqlite-jdbc/refs/heads/org-config/org-config.json
         env:

@@ -1,7 +1,7 @@
-plugins { id("io.vacco.oss.gitflow") version "1.0.1" }
+plugins { id("io.vacco.oss.gitflow") version "1.5.1" }
 
 group = "io.vacco.rqlite"
-version = "8.37.0-0.5.0"
+version = "8.37.0.5"
 
 configure<io.vacco.oss.gitflow.GsPluginProfileExtension> {
   addJ8Spec()

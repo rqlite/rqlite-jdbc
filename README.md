@@ -24,7 +24,7 @@ Install from [Maven Central](https://mvnrepository.com/artifact/io.rqlite/rqlite
 
     io.rqlite:rqlite-jdbc:[version]
 
-The driver version corresponds to the last known `rqlite` [release](https://github.com/rqlite/rqlite/releases) the driver was tested against, followed by major/minor/patch version of the driver itself.
+The driver version corresponds to the last known `rqlite` [release](https://github.com/rqlite/rqlite/releases) the driver was tested against, followed by a build version of the driver itself.
 
 ## Basic Usage
 
