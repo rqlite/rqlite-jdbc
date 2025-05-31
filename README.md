@@ -140,7 +140,6 @@ Create a file with the following content at `~/.gsOrgConfig.json`:
 
 ```
 {
-  "orgId": "rqlite",
   "orgConfigUrl": "https://raw.githubusercontent.com/rqlite/rqlite-jdbc/refs/heads/org-config/org-config.json"
 }
 ```
