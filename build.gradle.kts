@@ -1,4 +1,4 @@
-plugins { id("io.vacco.oss.gitflow") version "1.5.3" }
+plugins { id("io.vacco.oss.gitflow") version "1.5.4" }
 
 group = "io.vacco.rqlite"
 version = "8.37.0.5"
