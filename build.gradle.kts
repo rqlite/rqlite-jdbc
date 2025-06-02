@@ -1,6 +1,6 @@
 plugins { id("io.vacco.oss.gitflow") version "1.5.4" }
 
-group = "io.vacco.rqlite"
+group = "io.rqlite"
 version = "8.37.0.5"
 
 configure<io.vacco.oss.gitflow.GsPluginProfileExtension> {
