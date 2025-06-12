@@ -12,13 +12,12 @@ import static io.rqlite.jdbc.L4Err.*;
 
 public class L4Conn implements Connection {
 
-  private final L4Client client;
-  private final L4DbMeta meta;
   private final Properties clientInfo;
+  private final L4Client   client;
+  private final L4DbMeta   meta;
 
-  protected boolean autoCommit = true;
   private   boolean isClosed;
-  private   int holdability;
+  private   int     holdability;
 
   public L4Conn(L4Client client) throws SQLException {
     if (client == null) {
@@ -76,27 +75,35 @@ public class L4Conn implements Connection {
 
   @Override public void setAutoCommit(boolean autoCommit) throws SQLException {
     checkClosed();
-    this.autoCommit = autoCommit;
+    L4Log.l4Debug("{} - setAutoCommit: [{}]", this, autoCommit);
+    if (!autoCommit) {
+      client.startBuffer();
+    }
   }
 
   @Override public boolean getAutoCommit() throws SQLException {
     checkClosed();
-    return autoCommit;
+    L4Log.l4Debug("{} - getAutoCommit [{}]", this, !client.isBuffering());
+    return !client.isBuffering();
   }
 
-  @Override public void commit() throws SQLException { // no-op enough?
+  @Override public void commit() throws SQLException {
     checkClosed();
+    L4Log.l4Debug("{} - commit", this);
+    client.stopBuffer(true, res -> L4Log.l4Debug("{} - commit result: {}", this, res));
   }
 
-  @Override public void rollback() throws SQLException { // no-op enough?
+  @Override public void rollback() throws SQLException {
     checkClosed();
+    L4Log.l4Debug("{} - rollback", this);
+    client.stopBuffer(false, null);
   }
 
   @Override public void close() throws SQLException {
     if (isClosed) {
       return;
     }
-    L4Log.l4Trace("Closing connection {}", this);
+    L4Log.l4Trace("{} - close", this);
     isClosed = true;
     this.client.close();
   }
@@ -369,6 +376,10 @@ public class L4Conn implements Connection {
   @Override public boolean isWrapperFor(Class<?> iface) throws SQLException {
     checkClosed();
     return iface.isAssignableFrom(getClass());
+  }
+
+  @Override public String toString() {
+    return String.format("%s - jdbc", client);
   }
 
 }

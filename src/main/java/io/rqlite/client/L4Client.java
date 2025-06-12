@@ -5,16 +5,17 @@ import java.net.URI;
 import java.net.http.*;
 import java.time.Duration;
 import java.util.*;
+import java.util.function.Consumer;
 import io.rqlite.jdbc.L4Log;
-import io.rqlite.json.Json;
-import io.rqlite.json.JsonValue;
+import io.rqlite.json.*;
 
+import static io.rqlite.client.L4Response.*;
 import static io.rqlite.client.L4Err.*;
 import static java.lang.String.format;
 
 public class L4Client implements Closeable {
 
-  private HttpClient httpClient;
+  private HttpClient   httpClient;
   private final String baseUrl;
   private final String executeURL;
   private final String queryURL;
@@ -24,6 +25,7 @@ public class L4Client implements Closeable {
 
   public  String basicAuthUser = "";
   private String basicAuthPass = "";
+  private List<L4Response> buffer;
 
   public L4Client(String baseURL, HttpClient client) {
     this.baseUrl = Objects.requireNonNull(baseURL);
@@ -39,7 +41,7 @@ public class L4Client implements Closeable {
 
   private HttpResponse<String> doPostRequest(String url, String body) {
     try {
-      L4Log.l4Trace("POST {}", body);
+      L4Log.l4Trace("{} - POST {}", this, body);
       var builder = HttpRequest.newBuilder().uri(URI.create(url));
       if (L4Options.timeoutSec > 0) {
         builder.timeout(Duration.ofSeconds(L4Options.timeoutSec));
@@ -86,13 +88,46 @@ public class L4Client implements Closeable {
     return this;
   }
 
-  public L4Response execute(boolean transaction, L4Statement ... statements) {
-    var body = L4Statement.toArray(statements).toString();
+  public boolean isBuffering() {
+    return this.buffer != null;
+  }
+
+  public void startBuffer() {
+    if (buffer == null) {
+      buffer = new ArrayList<>();
+    }
+  }
+
+  private L4Response doExecute(boolean transaction, L4Statement ... statements) {
     var queryParams = L4Options.queryParams(transaction);
-    var resp = doJSONPostRequest(executeURL + queryParams, body);
+    var url = executeURL + queryParams;
+    var body = L4Statement.toArray(statements).toString();
+    var resp = doJSONPostRequest(url, body);
     var rb = resp.body();
     var node = Json.parse(rb).asObject();
-    return new L4Response(resp.statusCode(), node);
+    return response(resp.statusCode(), node);
+  }
+
+  public void stopBuffer(boolean commit, Consumer<L4Response> responseFn) {
+    if (commit && buffer != null && !buffer.isEmpty()) {
+      var statements = buffer.stream()
+        .flatMap(res -> Arrays.stream(res.statements))
+        .toArray(L4Statement[]::new);
+      buffer.clear();
+      responseFn.accept(doExecute(true, statements));
+    }
+    buffer = null;
+  }
+
+  public L4Response execute(boolean transaction, L4Statement ... statements) {
+    if (isBuffering()) {
+      L4Log.l4Trace("{} - defer: {}", this, Arrays.toString(statements));
+      var res = deferred(statements);
+      res.results = new ArrayList<>();
+      this.buffer.add(res);
+      return res;
+    }
+    return doExecute(transaction, statements);
   }
 
   public L4Response executeSingle(String statement, Object... args) {
@@ -107,7 +142,7 @@ public class L4Client implements Closeable {
     var resp = doJSONPostRequest(queryURL + queryParams, body);
     var rb = resp.body();
     var node = Json.parse(rb).asObject();
-    return new L4Response(resp.statusCode(), node);
+    return response(resp.statusCode(), node);
   }
 
   public L4Response querySingle(String statement, Object... args) {
@@ -149,6 +184,10 @@ public class L4Client implements Closeable {
   @Override public void close() {
     // only Java 21+ supports explicitly closing the http client... sigh...
     this.httpClient = null;
+  }
+
+  @Override public String toString() {
+    return String.format("l4c [%08x, %03d]", this.hashCode(), buffer == null ? -1 : buffer.size());
   }
 
 }

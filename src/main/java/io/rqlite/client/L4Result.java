@@ -116,4 +116,14 @@ public class L4Result {
     }
   }
 
+  @Override public String toString() {
+    return String.format(
+      "[cols: %d, types: %d, vals: %d, id: %d, rows: %d, err: %s]",
+      columns != null ? columns.size() : -1,
+      types != null ? types.size() : -1,
+      values != null ? values.size() : -1,
+      lastInsertId, rowsAffected, error
+    );
+  }
+
 }

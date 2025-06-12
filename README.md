@@ -118,9 +118,25 @@ Only the `main` SQLite database is reported as a catalog to JDBC.
 
 ### Transaction Limitations
 
-The driver does nothing when calling `commit`, or `rollback` on `Connection` instances due to `rqlite`'s [Transaction support](https://rqlite.io/docs/api/api/#transactions).
+The driver offers deferred transaction support on `Connection` instances due to `rqlite`'s [Transaction support](https://rqlite.io/docs/api/api/#transactions) conventions, which deviate from the JDBC standard.
 
-Call `setAutoCommit(true)` on a connection, and call `executeBatch` on `Statement` instances for atomic multi-statement execution, which effectively appends `transaction=true` to the underlying `rqlite` HTTP request.
+To execute multiple SQL statements as a transaction, you have two options.
+
+#### Batch statements
+
+Populate a JDBC batch using [`Statement`](https://docs.oracle.com/en/java/javase/11/docs/api/java.sql/java/sql/Statement.html#addBatch(java.lang.String)) or [`PreparedStatement`](https://docs.oracle.com/en/java/javase/11/docs/api/java.sql/java/sql/PreparedStatement.html#addBatch()), which will get sent with `transaction=true` to the underlying `rqlite` HTTP request.
+
+#### Synthetic/deferred transactions
+
+Call `setAutoCommit(false)` on a [`Connection`](https://docs.oracle.com/en/java/javase/11/docs/api/java.sql/java/sql/Connection.html#setAutoCommit(boolean)), and run `insert`, `update` or `delete` statements.
+
+The execution of these statements will get deferred until you call `commit()`.
+
+This will send all statements to the database as a single batch, appending `transaction=true` to the underlying `rqlite` HTTP request.
+
+This implies that you won't be able to inspect `ResultSet`s, metadata or row counts after executing each statement.
+
+The only guarantee is that if `commit()` succeeds, then all deferred statements were accepted by the database.
 
 ### Isolation Level
 

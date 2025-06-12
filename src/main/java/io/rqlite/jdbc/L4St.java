@@ -14,16 +14,16 @@ import static io.rqlite.client.L4Err.*;
 public class L4St implements Statement {
 
   protected final L4Conn            conn;
-  protected final L4Client client;
+  protected final L4Client          client;
   protected final List<L4Statement> batch = new ArrayList<>();
 
-  protected boolean                 isClosed = false;
-  protected L4Rs                    currentResultSet = null;
-  protected L4Response currentResponse = null;
-  protected int                     maxRows = -1;
-  protected int                     fetchSize = 0;
-  protected boolean                 closeOnCompletion = false;
-  protected int                     currentResultIndex = -1;
+  protected boolean     isClosed = false;
+  protected L4Rs        currentResultSet = null;
+  protected L4Response  currentResponse = null;
+  protected int         maxRows = -1;
+  protected int         fetchSize = 0;
+  protected boolean     closeOnCompletion = false;
+  protected int         currentResultIndex = -1;
 
   public L4St(L4Client client, L4Conn conn) {
     this.client = Objects.requireNonNull(client);
@@ -34,8 +34,8 @@ public class L4St implements Statement {
     this(client, null);
   }
 
-  protected boolean isAutoCommit() {
-    return conn != null && conn.autoCommit;
+  protected boolean isAutoCommit() throws SQLException {
+    return conn != null && conn.getAutoCommit();
   }
 
   protected void checkClosed() throws SQLException {
@@ -51,7 +51,7 @@ public class L4St implements Statement {
     currentResultSet = null;
   }
 
-  private L4Response runRaw(String sql) {
+  private L4Response runRaw(String sql) throws SQLException {
     var sel = isSelect(sql);
     var sta = split(sql);
     var res = sel ? client.query(sta) : client.execute(isAutoCommit(), sta);
@@ -193,7 +193,7 @@ public class L4St implements Statement {
     }
     try {
       currentResponse = runRaw(sql);
-      if (currentResponse.results.isEmpty()) {
+      if (currentResponse.results == null || currentResponse.results.isEmpty()) {
         return false;
       }
       currentResultIndex = 0;

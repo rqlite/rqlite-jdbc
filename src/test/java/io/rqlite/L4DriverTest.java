@@ -56,6 +56,7 @@ public class L4DriverTest {
       });
       it("Applies Liquibase changesets",  () -> {
         var log = LoggerFactory.getLogger(L4DriverTest.class);
+        L4Log.debugFn = log::debug;
         L4Log.traceFn = log::trace;
         var hkConfig = new HikariConfig();
         hkConfig.setJdbcUrl(rqUrl);
