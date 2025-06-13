@@ -124,6 +124,7 @@ public class L4Client implements Closeable {
       L4Log.l4Trace("{} - defer: {}", this, Arrays.toString(statements));
       var res = deferred(statements);
       res.results = new ArrayList<>();
+      res.results.add(new L4Result(new JsonObject()));
       this.buffer.add(res);
       return res;
     }

@@ -134,9 +134,11 @@ The execution of these statements will get deferred until you call `commit()`.
 
 This will send all statements to the database as a single batch, appending `transaction=true` to the underlying `rqlite` HTTP request.
 
-This implies that you won't be able to inspect `ResultSet`s, metadata or row counts after executing each statement.
+This implies that you won't be able to inspect `ResultSet`s, metadata or row counts after executing each statement. A dummy resultset is provided only for compatibility with JDBC semantics.
 
 The only guarantee is that if `commit()` succeeds, then all deferred statements were accepted by the database.
+
+Lastly, make sure that all statements get executed through the same connection where the transaction was initiated.
 
 ### Isolation Level
 
