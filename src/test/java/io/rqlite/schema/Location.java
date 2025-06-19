@@ -7,11 +7,11 @@ import io.vacco.metolithe.annotations.*;
   @MtPk public int lid;
 
   @MtFk(Device.class)
-  @MtUnique(idx = 0, inPk = true)
+  @MtPk(idx = 0)
   public int did;
 
   @MtVarchar(32) @MtNotNull
-  @MtUnique(idx = 1, inPk = true)
+  @MtPk(idx = 1)
   public String geoHash8;
 
 }

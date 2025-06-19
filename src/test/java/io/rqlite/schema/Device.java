@@ -7,11 +7,11 @@ import io.vacco.metolithe.annotations.*;
   @MtPk public int did;
 
   @MtFk(User.class)
-  @MtUnique(idx = 0, inPk = true)
+  @MtPk(idx = 0)
   public int uid;
 
   @MtField
-  @MtUnique(idx = 1, inPk = true)
+  @MtPk(idx = 1)
   public int number;
 
 }

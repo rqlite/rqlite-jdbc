@@ -2,12 +2,12 @@ package io.rqlite.dao;
 
 import io.vacco.metolithe.core.MtCaseFormat;
 import io.vacco.metolithe.core.MtDescriptor;
-import io.vacco.metolithe.core.MtIdFn;
-import io.vacco.metolithe.core.MtWriteDao;
+import io.vacco.metolithe.core.MtFieldDescriptor;
+import io.vacco.metolithe.id.MtIdFn;
+import io.vacco.metolithe.dao.MtWriteDao;
+import io.vacco.metolithe.query.MtJdbc;
+import io.vacco.metolithe.query.MtResult;
 
-import org.codejargon.fluentjdbc.api.FluentJdbc;
-
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -20,11 +20,15 @@ public class LocationDao extends MtWriteDao<io.rqlite.schema.Location, java.lang
   public static final String fld_did = "did";
   public static final String fld_geoHash8 = "geoHash8";
   
-  public LocationDao(String schema, MtCaseFormat fmt, FluentJdbc jdbc, MtIdFn<java.lang.Integer> idFn) {
+  public LocationDao(String schema, MtCaseFormat fmt, MtJdbc jdbc, MtIdFn<java.lang.Integer> idFn) {
     super(schema, jdbc, new MtDescriptor<>(io.rqlite.schema.Location.class, fmt), idFn);
   }
   
-  public Collection<io.rqlite.schema.Location> loadWhereLidEq(java.lang.Integer lid) {
+  public MtFieldDescriptor fld_lid() {
+    return this.dsc.getField(fld_lid);
+  }
+
+  public List<io.rqlite.schema.Location> loadWhereLidEq(java.lang.Integer lid) {
     return loadWhereEq(fld_lid, lid);
   }
 
@@ -32,11 +36,15 @@ public class LocationDao extends MtWriteDao<io.rqlite.schema.Location, java.lang
     return loadWhereIn(fld_lid, values);
   }
 
-  public long deleteWhereLidEq(java.lang.Integer lid) {
+  public MtResult<io.rqlite.schema.Location> deleteWhereLidEq(java.lang.Integer lid) {
     return deleteWhereEq(fld_lid, lid);
   }
   
-  public Collection<io.rqlite.schema.Location> loadWhereDidEq(java.lang.Integer did) {
+  public MtFieldDescriptor fld_did() {
+    return this.dsc.getField(fld_did);
+  }
+
+  public List<io.rqlite.schema.Location> loadWhereDidEq(java.lang.Integer did) {
     return loadWhereEq(fld_did, did);
   }
 
@@ -44,11 +52,15 @@ public class LocationDao extends MtWriteDao<io.rqlite.schema.Location, java.lang
     return loadWhereIn(fld_did, values);
   }
 
-  public long deleteWhereDidEq(java.lang.Integer did) {
+  public MtResult<io.rqlite.schema.Location> deleteWhereDidEq(java.lang.Integer did) {
     return deleteWhereEq(fld_did, did);
   }
   
-  public Collection<io.rqlite.schema.Location> loadWhereGeoHash8Eq(java.lang.String geoHash8) {
+  public MtFieldDescriptor fld_geoHash8() {
+    return this.dsc.getField(fld_geoHash8);
+  }
+
+  public List<io.rqlite.schema.Location> loadWhereGeoHash8Eq(java.lang.String geoHash8) {
     return loadWhereEq(fld_geoHash8, geoHash8);
   }
 
@@ -56,7 +68,7 @@ public class LocationDao extends MtWriteDao<io.rqlite.schema.Location, java.lang
     return loadWhereIn(fld_geoHash8, values);
   }
 
-  public long deleteWhereGeoHash8Eq(java.lang.String geoHash8) {
+  public MtResult<io.rqlite.schema.Location> deleteWhereGeoHash8Eq(java.lang.String geoHash8) {
     return deleteWhereEq(fld_geoHash8, geoHash8);
   }
   
