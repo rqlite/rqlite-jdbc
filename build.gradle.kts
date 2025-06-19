@@ -19,3 +19,15 @@ tasks.processResources {
     expand("projectVersion" to version)
   }
 }
+
+tasks.withType<JacocoReport> {
+  afterEvaluate {
+    classDirectories.setFrom(
+      files(classDirectories.files.map {
+        fileTree(it) {
+          exclude("io/rqlite/json/**") // Replace with your package
+        }
+      })
+    )
+  }
+}

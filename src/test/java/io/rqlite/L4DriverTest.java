@@ -77,6 +77,11 @@ public class L4DriverTest {
               .applyChanges(changes, ctx);
           }
         }
+
+        var props = DriverManager.getDriver(rqUrl).getPropertyInfo(null, null);
+        for (var prop : props) {
+          log.info("{} ({})", prop.description, prop.required);
+        }
       });
       it("Inserts data via object mapping", () -> {
         var idFn = new MtMurmur3IFn(1984);

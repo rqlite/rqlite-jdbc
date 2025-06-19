@@ -120,7 +120,7 @@ public class L4Driver implements Driver {
 
   @Override public DriverPropertyInfo[] getPropertyInfo(String url, Properties info) {
     var mergedProps = mergeProperties(info, new HashMap<>());
-    var props = new DriverPropertyInfo[11];
+    var props = new DriverPropertyInfo[10];
 
     props[0] = new DriverPropertyInfo(kUser, mergedProps.getProperty(kUser));
     props[0].description = "Username for rqlite authentication";
@@ -134,33 +134,33 @@ public class L4Driver implements Driver {
     props[2].description = "Timeout in seconds";
     props[2].required = false;
 
-    props[4] = new DriverPropertyInfo(kQueue, mergedProps.getProperty(kQueue, String.valueOf(L4Options.queue)));
-    props[4].description = "Enable queue mode";
+    props[3] = new DriverPropertyInfo(kQueue, mergedProps.getProperty(kQueue, String.valueOf(L4Options.queue)));
+    props[3].description = "Enable queue mode";
+    props[3].required = false;
+
+    props[4] = new DriverPropertyInfo(kWait, mergedProps.getProperty(kWait, String.valueOf(L4Options.wait)));
+    props[4].description = "Enable wait mode";
     props[4].required = false;
 
-    props[5] = new DriverPropertyInfo(kWait, mergedProps.getProperty(kWait, String.valueOf(L4Options.wait)));
-    props[5].description = "Enable wait mode";
+    props[5] = new DriverPropertyInfo(kLevel, mergedProps.getProperty(kLevel, L4Options.level.toString()));
+    props[5].description = "Consistency level (none, weak, linearizable)";
     props[5].required = false;
 
-    props[6] = new DriverPropertyInfo(kLevel, mergedProps.getProperty(kLevel, L4Options.level.toString()));
-    props[6].description = "Consistency level (none, weak, linearizable)";
+    props[6] = new DriverPropertyInfo(kLinearizableTimeoutSec, mergedProps.getProperty(kLinearizableTimeoutSec, String.valueOf(L4Options.linearizableTimeoutSec)));
+    props[6].description = "Linearizable timeout in seconds";
     props[6].required = false;
 
-    props[7] = new DriverPropertyInfo(kLinearizableTimeoutSec, mergedProps.getProperty(kLinearizableTimeoutSec, String.valueOf(L4Options.linearizableTimeoutSec)));
-    props[7].description = "Linearizable timeout in seconds";
+    props[7] = new DriverPropertyInfo(kFreshnessSec, mergedProps.getProperty(kFreshnessSec, String.valueOf(L4Options.freshnessSec)));
+    props[7].description = "Freshness in seconds";
     props[7].required = false;
 
-    props[8] = new DriverPropertyInfo(kFreshnessSec, mergedProps.getProperty(kFreshnessSec, String.valueOf(L4Options.freshnessSec)));
-    props[8].description = "Freshness in seconds";
+    props[8] = new DriverPropertyInfo(kFreshnessStrict, mergedProps.getProperty(kFreshnessStrict, String.valueOf(L4Options.freshnessStrict)));
+    props[8].description = "Enable strict freshness";
     props[8].required = false;
 
-    props[9] = new DriverPropertyInfo(kFreshnessStrict, mergedProps.getProperty(kFreshnessStrict, String.valueOf(L4Options.freshnessStrict)));
-    props[9].description = "Enable strict freshness";
+    props[9] = new DriverPropertyInfo(kCaCert, mergedProps.getProperty(kCaCert));
+    props[9].description = "Path to CA certificate for HTTPS connections";
     props[9].required = false;
-
-    props[10] = new DriverPropertyInfo(kCaCert, mergedProps.getProperty(kCaCert));
-    props[10].description = "Path to CA certificate for HTTPS connections";
-    props[10].required = false;
 
     return props;
   }
