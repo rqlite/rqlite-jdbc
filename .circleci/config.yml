@@ -7,11 +7,10 @@ jobs:
       - image: cimg/openjdk:17.0
 
       # Secondary service container: rqlite node
-      - image: rqlite/rqlite:8.42.0               # pin a known‑good version
+      - image: rqlite/rqlite:8.42.0
         name: rqlite
-        environment:
-          NODE_ID: "1"
-        command: [ "-http-addr", "0.0.0.0:4001", "-fk", "/rqlite/data" ]
+        ports:
+          - 4001:4001
 
     environment:
       RQLITE_URL: http://rqlite:4001              # picked up by integration tests
