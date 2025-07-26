@@ -50,12 +50,13 @@ public class L4Jdbc {
   public static final String RQ_BLOB      = "BLOB";
   public static final String RQ_NULL      = "NULL";
   public static final String RQ_REAL      = "REAL"; // Alias for FLOAT in RQLite
+
   public static final String[] RQ_TYPES = new String[] {
     RQ_INTEGER, RQ_NUMERIC, RQ_BOOLEAN, RQ_TINYINT,
     RQ_SMALLINT, RQ_BIGINT, RQ_FLOAT, RQ_DOUBLE,
     RQ_VARCHAR, RQ_DATE, RQ_TIME, RQ_TIMESTAMP,
     RQ_DATALINK, RQ_CLOB, RQ_NCLOB, RQ_NVARCHAR,
-    RQ_BLOB, RQ_NULL,RQ_REAL
+    RQ_BLOB, RQ_NULL, RQ_REAL
   };
 
   public static String loadResourceAsString(String resourcePath) {
@@ -560,7 +561,7 @@ public class L4Jdbc {
       case RQ_BIGINT:    return Long.class;
       case RQ_FLOAT:     return Float.class;
       case RQ_DOUBLE:    return Double.class;
-      case RQ_REAL:       return Float.class;
+      case RQ_REAL:      return Float.class;
       case RQ_VARCHAR:
       case RQ_NVARCHAR:  return String.class;
       case RQ_DATE:      return java.sql.Date.class;
