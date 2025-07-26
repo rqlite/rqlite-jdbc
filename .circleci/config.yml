@@ -1,31 +1,65 @@
-# Use the latest 2.1 version of CircleCI pipeline process engine.
-# See: https://circleci.com/docs/configuration-reference
 version: 2.1
 
-# Define a job to be invoked later in a workflow.
-# See: https://circleci.com/docs/jobs-steps/#jobs-overview & https://circleci.com/docs/configuration-reference/#jobs
 jobs:
-  say-hello:
-    # Specify the execution environment. You can specify an image from Docker Hub or use one of our convenience images from CircleCI's Developer Hub.
-    # See: https://circleci.com/docs/executor-intro/ & https://circleci.com/docs/configuration-reference/#executor-job
+  test:
     docker:
-      # Specify the version you desire here
-      # See: https://circleci.com/developer/images/image/cimg/base
-      - image: cimg/base:current
+      # Primary container: JDK‑17 with Gradle pre‑installed
+      - image: cimg/openjdk:17.0
 
-    # Add steps to the job
-    # See: https://circleci.com/docs/jobs-steps/#steps-overview & https://circleci.com/docs/configuration-reference/#steps
+      # Secondary service container: rqlite node
+      - image: rqlite/rqlite:8.42.0               # pin a known‑good version
+        name: rqlite
+        environment:
+          NODE_ID: "1"
+        command: [ "-http-addr", "0.0.0.0:4001", "-fk", "/rqlite/data" ]
+
+    environment:
+      RQLITE_URL: http://rqlite:4001              # picked up by integration tests
+
     steps:
-      # Checkout the code as the first step.
       - checkout
-      - run:
-          name: "Say hello"
-          command: "echo Hello, World!"
 
-# Orchestrate jobs using workflows
-# See: https://circleci.com/docs/workflows/ & https://circleci.com/docs/configuration-reference/#workflows
+      # Gradle dependency cache
+      - restore_cache:
+          keys:
+            - gradle-{{ checksum "gradle.lockfile" }}
+            - gradle-
+
+      # Wait for the rqlite service container to become healthy
+      - run:
+          name: Wait for rqlite
+          command: |
+            for i in {1..30}; do
+              if curl -sf http://rqlite:4001/healthz >/dev/null; then
+                echo "rqlite is up"
+                exit 0
+              fi
+              sleep 1
+            done
+            echo "rqlite failed to start" >&2
+            exit 1
+
+      # Build, test, and generate coverage report
+      - run:
+          name: Build & test
+          command: ./gradlew --no-daemon clean build jacocoTestReport
+
+      # Cache updated Gradle dependencies
+      - save_cache:
+          paths:
+            - ~/.gradle
+          key: gradle-{{ checksum "gradle.lockfile" }}
+
+      # Persist JUnit test results
+      - store_test_results:
+          path: build/test-results/test
+
+      # Persist HTML coverage report
+      - store_artifacts:
+          path: build/reports/jacoco/test/html
+          destination: coverage-report
+
 workflows:
-  say-hello-workflow: # This is the name of the workflow, feel free to change it to better match your workflow.
-    # Inside the workflow, you define the jobs you want to run.
+  sanity:
     jobs:
-      - say-hello
+      - test
