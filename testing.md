@@ -1,3 +1,5 @@
+## Sanity checks
+
 Clear and start a new local `rqlited` instance:
 
     rm -rfv ~/rq-data && rqlited -fk ~/rq-data
@@ -5,6 +7,8 @@ Clear and start a new local `rqlited` instance:
 Then run tests and measure code coverage:
 
     gradle clean build jacocoTestReport
+
+## DBeaver specific
 
 Enable JDBC tracing in DBeaver. Add `-Ddbeaver.jdbc.trace=true`.
 
