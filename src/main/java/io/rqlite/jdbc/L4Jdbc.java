@@ -49,13 +49,13 @@ public class L4Jdbc {
   public static final String RQ_NVARCHAR  = "NVARCHAR";
   public static final String RQ_BLOB      = "BLOB";
   public static final String RQ_NULL      = "NULL";
-
+  public static final String RQ_REAL      = "REAL"; // Alias for FLOAT in RQLite
   public static final String[] RQ_TYPES = new String[] {
     RQ_INTEGER, RQ_NUMERIC, RQ_BOOLEAN, RQ_TINYINT,
     RQ_SMALLINT, RQ_BIGINT, RQ_FLOAT, RQ_DOUBLE,
     RQ_VARCHAR, RQ_DATE, RQ_TIME, RQ_TIMESTAMP,
     RQ_DATALINK, RQ_CLOB, RQ_NCLOB, RQ_NVARCHAR,
-    RQ_BLOB, RQ_NULL
+    RQ_BLOB, RQ_NULL,RQ_REAL
   };
 
   public static String loadResourceAsString(String resourcePath) {
@@ -502,6 +502,7 @@ public class L4Jdbc {
       case RQ_NVARCHAR:   return NVARCHAR;
       case RQ_BLOB:       return BLOB;
       case RQ_NULL:       return NULL;
+      case RQ_REAL:       return FLOAT; // RQLite uses REAL as an alias for FLOAT
       default: return -1;
     }
   }
@@ -534,6 +535,7 @@ public class L4Jdbc {
       case RQ_BIGINT:     return 19;     // 64-bit integer (approx 19 digits)
       case RQ_FLOAT:      return 7;      // Single-precision (approx 7 digits)
       case RQ_DOUBLE:     return 15;     // Double-precision (approx 15 digits)
+      case RQ_REAL:       return 7;      // Alias for FLOAT, single-precision
       case RQ_VARCHAR:    return 255;    // Arbitrary, conservative default
       case RQ_DATE:       return 10;     // "YYYY-MM-DD"
       case RQ_TIME:       return 8;      // "HH:MM:SS"
@@ -558,6 +560,7 @@ public class L4Jdbc {
       case RQ_BIGINT:    return Long.class;
       case RQ_FLOAT:     return Float.class;
       case RQ_DOUBLE:    return Double.class;
+      case RQ_REAL:       return Float.class;
       case RQ_VARCHAR:
       case RQ_NVARCHAR:  return String.class;
       case RQ_DATE:      return java.sql.Date.class;
@@ -632,6 +635,7 @@ public class L4Jdbc {
       case RQ_SMALLINT:   return 6;    // -32768 to 32767
       case RQ_BIGINT:     return 20;   // -2^63 to 2^63-1
       case RQ_FLOAT:      return 25;   // Scientific notation, e.g., -1.2345678E123
+      case RQ_REAL:       return 25;   // Alias for FLOAT, scientific notation
       case RQ_DOUBLE:     return 25;   // Scientific notation, e.g., -1.234567890123456E123
       case RQ_VARCHAR:    return 255;  // Arbitrary, conservative default
       case RQ_DATE:       return 10;   // "YYYY-MM-DD"
