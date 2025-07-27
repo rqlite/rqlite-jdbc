@@ -23,7 +23,8 @@
   },
   "devConfig": {
     "versions": {
-      "j8Spec": "io.github.j8spec:j8spec:3.0.1"
+      "j8Spec": "io.github.j8spec:j8spec:3.0.1",
+      "javaVersion": "VERSION_11"
     }
   }
 }
