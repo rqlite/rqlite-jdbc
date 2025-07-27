@@ -1,7 +1,7 @@
-plugins { id("io.vacco.oss.gitflow") version "1.5.4" }
+plugins { id("io.vacco.oss.gitflow") version "1.8.2" }
 
 group = "io.rqlite"
-version = "8.37.0.7"
+version = "8.42.0.1"
 
 configure<io.vacco.oss.gitflow.GsPluginProfileExtension> {
   addJ8Spec()
@@ -25,7 +25,7 @@ tasks.withType<JacocoReport> {
     classDirectories.setFrom(
       files(classDirectories.files.map {
         fileTree(it) {
-          exclude("io/rqlite/json/**") // Replace with your package
+          exclude("io/rqlite/json/**")
         }
       })
     )

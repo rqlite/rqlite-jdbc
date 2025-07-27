@@ -559,9 +559,10 @@ public class L4Jdbc {
       case RQ_TINYINT:   return Byte.class;
       case RQ_SMALLINT:  return Short.class;
       case RQ_BIGINT:    return Long.class;
-      case RQ_FLOAT:     return Float.class;
+      case RQ_FLOAT:
+      case RQ_REAL:
+        return Float.class;
       case RQ_DOUBLE:    return Double.class;
-      case RQ_REAL:      return Float.class;
       case RQ_VARCHAR:
       case RQ_NVARCHAR:  return String.class;
       case RQ_DATE:      return java.sql.Date.class;
