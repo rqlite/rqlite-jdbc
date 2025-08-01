@@ -10,16 +10,16 @@ jobs:
       - uses: actions/checkout@v4
       - name: Wait for rqlite
         run: |
-          for i in {1..30}; do
-            if curl -sf http://rqlite:4001/healthz >/dev/null; then
-              echo "rqlite is up"
-              exit 0
+          end=$((SECONDS+120))
+          until curl -sf http://rqlite:4001/healthz; do
+            if [ $SECONDS -ge $end ]; then
+              echo "rqlite failed to start" >&2
+              curl -v http://rqlite:4001/healthz || true
+              exit 1
             fi
-            echo "Waiting for rqlite to start..."
-            sleep 1
+            sleep 2
           done
-          echo "rqlite failed to start" >&2
-          exit 1
+          echo "rqlite is up"
       - name: Build & test
         run: gradle clean build jacocoTestReport
       - name: Upload test results
