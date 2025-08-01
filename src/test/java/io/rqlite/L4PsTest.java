@@ -722,7 +722,7 @@ public class L4PsTest {
         assertTrue(rs.getBoolean("bool_val"));
         assertArrayEquals(blobData, rs.getBytes("blob_val"));
         assertEquals(Date.valueOf("2023-11-01").toString(), rs.getDate("date_val").toString());
-        assertEquals(Timestamp.valueOf("2023-11-01 07:45:00"), rs.getTimestamp("ts_val"));
+        assertEquals(Timestamp.valueOf("2023-11-01 15:45:00"), rs.getTimestamp("ts_val"));
         assertFalse(rs.next());
         rs.close();
 
