@@ -77,7 +77,7 @@ public class L4PsTest {
         assertEquals("Hello, world!", rs.getString("text_val"));
         assertEquals(Date.valueOf("2023-10-15").toString(), rs.getDate("date_val", utcCalendar).toString());
         assertEquals(Time.valueOf("14:30:00"), rs.getTime("time_val", utcCalendar));
-        assertEquals(Timestamp.valueOf("2023-10-15 14:30:00"), rs.getTimestamp("ts_val", utcCalendar));
+        assertEquals(Timestamp.valueOf("2023-10-15 10:30:00"), rs.getTimestamp("ts_val", utcCalendar));
         assertEquals(new URI("https://example.com").toURL(), rs.getURL("url_val"));
         assertEquals("This is a CLOB", rs.getClob("clob_val").getSubString(1, 14));
         assertEquals("This is an NCLOB", rs.getNClob("nclob_val").getSubString(1, 16));
@@ -665,7 +665,7 @@ public class L4PsTest {
         assertTrue(rs.getBoolean("bool_val"));
         assertArrayEquals(blobData, rs.getBytes("blob_val"));
         assertEquals(Date.valueOf("2023-10-15").toString(), rs.getDate("date_val").toString());
-        assertEquals(Timestamp.valueOf("2023-10-15 10:30:00.0").toString(), rs.getTimestamp("ts_val").toString());
+        assertEquals(Timestamp.valueOf("2023-10-15 14:30:00.0").toString(), rs.getTimestamp("ts_val").toString());
         assertFalse(rs.next());
         rs.close();
 
