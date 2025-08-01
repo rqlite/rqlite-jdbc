@@ -140,7 +140,7 @@ public class L4DbMetaTest {
       // User and URL
       it("Tests user and URL methods", () -> {
         assertTrue(meta.getUserName().isEmpty());
-        assertEquals("http://localhost:4001", meta.getURL());
+        assertEquals(L4Tests.RQLITE_URL, meta.getURL());
       });
 
       // Database Properties

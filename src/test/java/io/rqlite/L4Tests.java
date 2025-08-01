@@ -9,14 +9,11 @@ import static org.junit.Assert.assertEquals;
 
 public class L4Tests {
 
-  public static final String RQLITE_URL = System.getenv("RQLITE_URL");
-  public static final boolean runIntegrationTests = !GraphicsEnvironment.isHeadless() || RQLITE_URL != null;
+  public static final String RQLITE_URL = System.getenv("RQLITE_URL") == null ? "http://localhost:4001" : System.getenv("RQLITE_URL");
+  public static final boolean runIntegrationTests = !GraphicsEnvironment.isHeadless() || System.getenv("RQLITE_URL") != null;
 
   public static L4Client localClient() {
-    return new L4Client(
-      RQLITE_URL == null ? "http://localhost:4001" : RQLITE_URL,
-      L4Http.defaultHttpClient(L4Options.timeoutSec).build()
-    );
+    return new L4Client(RQLITE_URL, L4Http.defaultHttpClient(L4Options.timeoutSec).build());
   }
 
   public static void setupPreparedStatementTestTable(L4Client rq) {

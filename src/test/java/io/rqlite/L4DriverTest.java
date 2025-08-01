@@ -30,7 +30,7 @@ public class L4DriverTest {
     User.class, Device.class, Location.class
   };
 
-  public static final String        rqUrl = "jdbc:sqlite:http://localhost:4001";
+  public static final String        rqUrl = String.format("jdbc:sqlite:%s", L4Tests.RQLITE_URL);
   public static final L4Client      rq = L4Tests.localClient();
   public static final MtCaseFormat  Fmt = MtCaseFormat.KEEP_CASE;
   public static final MtConn        connFn = () -> {
