@@ -13,6 +13,7 @@ jobs:
       - name: Build & test
         run: gradle clean build jacocoTestReport
       - name: Test results
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with: { name: test-results, path: build/test-results/test }
       - name: Coverage report
