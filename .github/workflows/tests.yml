@@ -9,10 +9,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Wait for rqlite
+        shell: bash
         run: |
           end=$((SECONDS+120))
           until curl -sf http://rqlite:4001/healthz; do
-            if [ $SECONDS -ge $end ]; then
+            if [ "$SECONDS" -ge "$end" ]; then
               echo "rqlite failed to start" >&2
               curl -v http://rqlite:4001/healthz || true
               exit 1
