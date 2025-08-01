@@ -1,0 +1,32 @@
+name: PR Tests
+on: { pull_request: { branches: [ master ] } }
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container: docker.io/library/gradle:8-jdk21
+    services: { rqlite: { image: rqlite/rqlite:8.42.0, ports: [ 4001:4001 ] } }
+    env: { RQLITE_URL: http://rqlite:4001 }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wait for rqlite
+        run: |
+          for i in {1..30}; do
+            if curl -sf http://rqlite:4001/healthz >/dev/null; then
+              echo "rqlite is up"
+              exit 0
+            fi
+            echo "Waiting for rqlite to start..."
+            sleep 1
+          done
+          echo "rqlite failed to start" >&2
+          exit 1
+      - name: Build & test
+        run: gradle clean build jacocoTestReport
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: test-results, path: build/test-results/test }
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: coverage-report, path: build/reports/jacoco/test/html }
