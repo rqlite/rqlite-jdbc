@@ -4,7 +4,6 @@ import io.rqlite.client.L4Statement;
 import j8spec.annotation.DefinedOrder;
 import j8spec.junit.J8SpecRunner;
 import org.junit.runner.RunWith;
-import java.awt.GraphicsEnvironment;
 
 import static java.lang.String.join;
 import static j8spec.J8Spec.*;
@@ -14,7 +13,7 @@ import static org.junit.Assert.*;
 @RunWith(J8SpecRunner.class)
 public class L4ClientTest {
   static {
-    if (!GraphicsEnvironment.isHeadless()) {
+    if (L4Tests.runIntegrationTests) {
       it("Interacts with an Rqlite instance", () -> {
         var rq = L4Tests.localClient();
 

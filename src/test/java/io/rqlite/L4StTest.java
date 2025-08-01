@@ -7,7 +7,6 @@ import io.rqlite.jdbc.L4St;
 import j8spec.annotation.DefinedOrder;
 import j8spec.junit.J8SpecRunner;
 import org.junit.runner.RunWith;
-import java.awt.GraphicsEnvironment;
 import java.sql.*;
 import java.util.*;
 
@@ -55,7 +54,7 @@ public class L4StTest {
   }
 
   static {
-    if (!GraphicsEnvironment.isHeadless()) {
+    if (L4Tests.runIntegrationTests) {
       it("Tests L4St query execution and result navigation", () -> {
         setupTestTable(rq);
         var stmt = new L4St(rq);

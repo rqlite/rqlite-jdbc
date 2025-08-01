@@ -1,0 +1,21 @@
+name: PR Tests
+on: { pull_request: { branches: [ master ] } }
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container: docker.io/library/gradle:8-jdk21
+    services: { rqlite: { image: rqlite/rqlite:8.42.0, ports: [ 4001:4001 ] } }
+    env:
+      RQLITE_URL: http://rqlite:4001
+      PLUGIN_ORGCONFIG: https://raw.githubusercontent.com/rqlite/rqlite-jdbc/refs/heads/org-config/org-config.json
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build & test
+        run: gradle clean build jacocoTestReport
+      - name: Test results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with: { name: test-results, path: build/test-results/test }
+      - name: Coverage report
+        uses: actions/upload-artifact@v4
+        with: { name: coverage-report, path: build/reports/jacoco/test/html }

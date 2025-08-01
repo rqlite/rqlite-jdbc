@@ -6,7 +6,6 @@ import io.rqlite.jdbc.L4Ps;
 import j8spec.annotation.DefinedOrder;
 import j8spec.junit.J8SpecRunner;
 import org.junit.runner.RunWith;
-import java.awt.GraphicsEnvironment;
 import java.io.*;
 import java.math.BigDecimal;
 import java.net.URI;
@@ -27,7 +26,7 @@ public class L4PsTest {
   private static final L4Client rq = L4Tests.localClient();
 
   static {
-    if (!GraphicsEnvironment.isHeadless()) {
+    if (L4Tests.runIntegrationTests) {
       it("Tests L4Ps query execution and parameter setting", () -> {
         setupPreparedStatementTestTable(rq);
         var insertSql = "INSERT INTO ps_test_data (" +
@@ -50,7 +49,7 @@ public class L4PsTest {
         ps.setString(9, "Hello, world!"); // text_val
         ps.setDate(10, Date.valueOf("2023-10-15")); // date_val
         ps.setTime(11, Time.valueOf("14:30:00")); // time_val
-        ps.setTimestamp(12, Timestamp.valueOf("2023-10-15 14:30:00")); // ts_val
+        ps.setTimestamp(12, Timestamp.valueOf("2023-10-15 10:30:00")); // ts_val
         ps.setURL(13, new URI("https://example.com").toURL()); // url_val
         ps.setString(14, "This is a CLOB"); // clob_val
         ps.setNString(15, "This is an NCLOB"); // nclob_val
@@ -76,8 +75,8 @@ public class L4PsTest {
         assertEquals(3.14f, rs.getFloat("float_val"), 0.001f);
         assertEquals(2.71828, rs.getDouble("double_val"), 0.001);
         assertEquals("Hello, world!", rs.getString("text_val"));
-        assertEquals(Date.valueOf("2023-10-14").toString(), rs.getDate("date_val", utcCalendar).toString());
-        assertEquals(Time.valueOf("09:30:00"), rs.getTime("time_val", utcCalendar));
+        assertEquals(Date.valueOf("2023-10-15").toString(), rs.getDate("date_val", utcCalendar).toString());
+        assertEquals(Time.valueOf("14:30:00"), rs.getTime("time_val", utcCalendar));
         assertEquals(Timestamp.valueOf("2023-10-15 10:30:00"), rs.getTimestamp("ts_val", utcCalendar));
         assertEquals(new URI("https://example.com").toURL(), rs.getURL("url_val"));
         assertEquals("This is a CLOB", rs.getClob("clob_val").getSubString(1, 14));
@@ -88,9 +87,9 @@ public class L4PsTest {
         rs.close();
         ps.close();
         selectPs.close();
-      });
+            });
 
-      it("Tests L4Ps stream and LOB parameter setting", () -> {
+            it("Tests L4Ps stream and LOB parameter setting", () -> {
         setupPreparedStatementTestTable(rq);
         var insertSql = "INSERT INTO ps_test_data (text_val, clob_val, nclob_val, nstring_val, blob_val) VALUES (?, ?, ?, ?, ?)";
         var ps = new L4Ps(rq, insertSql);
@@ -276,7 +275,7 @@ public class L4PsTest {
         selectPs.setInt(1, 1);
         var rs = selectPs.executeQuery();
         assertTrue(rs.next());
-        assertEquals(Date.valueOf("2023-10-14").toString(), rs.getDate("date_val", utcCalendar).toString());
+        assertEquals(Date.valueOf("2023-10-15").toString(), rs.getDate("date_val", utcCalendar).toString());
         assertEquals(time, rs.getTime("time_val", utcCalendar));
         assertEquals(timestamp, rs.getTimestamp("ts_val", utcCalendar));
         assertFalse(rs.next());
@@ -665,8 +664,8 @@ public class L4PsTest {
         assertEquals(textVal, rs.getString("text_val"));
         assertTrue(rs.getBoolean("bool_val"));
         assertArrayEquals(blobData, rs.getBytes("blob_val"));
-        assertEquals(Date.valueOf("2023-10-13").toString(), rs.getDate("date_val").toString());
-        assertEquals(Timestamp.valueOf("2023-10-15 10:30:00.0").toString(), rs.getTimestamp("ts_val").toString());
+        assertEquals(Date.valueOf("2023-10-15").toString(), rs.getDate("date_val").toString());
+        assertEquals(Timestamp.valueOf("2023-10-15 14:30:00.0").toString(), rs.getTimestamp("ts_val").toString());
         assertFalse(rs.next());
         rs.close();
 
@@ -722,8 +721,8 @@ public class L4PsTest {
         assertEquals("123", rs.getString("text_val"));
         assertTrue(rs.getBoolean("bool_val"));
         assertArrayEquals(blobData, rs.getBytes("blob_val"));
-        assertEquals(Date.valueOf("2023-10-30").toString(), rs.getDate("date_val").toString());
-        assertEquals(Timestamp.valueOf("2023-11-01 07:45:00"), rs.getTimestamp("ts_val"));
+        assertEquals(Date.valueOf("2023-11-01").toString(), rs.getDate("date_val").toString());
+        assertEquals(Timestamp.valueOf("2023-11-01 15:45:00"), rs.getTimestamp("ts_val"));
         assertFalse(rs.next());
         rs.close();
 

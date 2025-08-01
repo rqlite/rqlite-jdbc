@@ -7,8 +7,6 @@ import io.rqlite.jdbc.L4DbMeta;
 import j8spec.annotation.DefinedOrder;
 import j8spec.junit.J8SpecRunner;
 import org.junit.runner.RunWith;
-
-import java.awt.GraphicsEnvironment;
 import java.sql.*;
 import java.util.*;
 
@@ -120,7 +118,7 @@ public class L4DbMetaTest {
   }
 
   static {
-    if (!GraphicsEnvironment.isHeadless()) {
+    if (L4Tests.runIntegrationTests) {
       beforeAll(() -> {
         meta = new L4DbMeta(rq, null);
         setupTables();
@@ -142,7 +140,7 @@ public class L4DbMetaTest {
       // User and URL
       it("Tests user and URL methods", () -> {
         assertTrue(meta.getUserName().isEmpty());
-        assertEquals("http://localhost:4001", meta.getURL());
+        assertEquals(L4Tests.RQLITE_URL, meta.getURL());
       });
 
       // Database Properties

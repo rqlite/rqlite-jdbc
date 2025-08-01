@@ -16,7 +16,6 @@ import j8spec.annotation.DefinedOrder;
 import j8spec.junit.J8SpecRunner;
 import org.junit.runner.RunWith;
 import org.slf4j.LoggerFactory;
-import java.awt.*;
 import java.io.*;
 import java.sql.*;
 
@@ -31,7 +30,7 @@ public class L4DriverTest {
     User.class, Device.class, Location.class
   };
 
-  public static final String        rqUrl = "jdbc:sqlite:http://localhost:4001";
+  public static final String        rqUrl = String.format("jdbc:sqlite:%s", L4Tests.RQLITE_URL);
   public static final L4Client      rq = L4Tests.localClient();
   public static final MtCaseFormat  Fmt = MtCaseFormat.KEEP_CASE;
   public static final MtConn        connFn = () -> {
@@ -46,7 +45,7 @@ public class L4DriverTest {
     ShOption.setSysProp(ShOption.IO_VACCO_SHAX_DEVMODE, "true");
     ShOption.setSysProp(ShOption.IO_VACCO_SHAX_LOGLEVEL, "trace");
 
-    if (!GraphicsEnvironment.isHeadless()) {
+    if (L4Tests.runIntegrationTests) {
       it("Generates schema DAOs", () -> {
         var daoDir = new File("./src/test/java");
         var pkg = "io.rqlite.dao";

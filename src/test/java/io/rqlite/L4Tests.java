@@ -3,13 +3,17 @@ package io.rqlite;
 import io.rqlite.client.L4Client;
 import io.rqlite.client.L4Http;
 import io.rqlite.client.L4Options;
+import java.awt.GraphicsEnvironment;
 
 import static org.junit.Assert.assertEquals;
 
 public class L4Tests {
 
+  public static final String RQLITE_URL = System.getenv("RQLITE_URL") == null ? "http://localhost:4001" : System.getenv("RQLITE_URL");
+  public static final boolean runIntegrationTests = !GraphicsEnvironment.isHeadless() || System.getenv("RQLITE_URL") != null;
+
   public static L4Client localClient() {
-    return new L4Client("http://localhost:4001", L4Http.defaultHttpClient(L4Options.timeoutSec).build());
+    return new L4Client(RQLITE_URL, L4Http.defaultHttpClient(L4Options.timeoutSec).build());
   }
 
   public static void setupPreparedStatementTestTable(L4Client rq) {
