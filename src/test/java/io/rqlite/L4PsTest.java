@@ -49,7 +49,7 @@ public class L4PsTest {
         ps.setString(9, "Hello, world!"); // text_val
         ps.setDate(10, Date.valueOf("2023-10-15")); // date_val
         ps.setTime(11, Time.valueOf("14:30:00")); // time_val
-        ps.setTimestamp(12, Timestamp.valueOf("2023-10-15 14:30:00")); // ts_val
+        ps.setTimestamp(12, Timestamp.valueOf("2023-10-15 10:30:00")); // ts_val
         ps.setURL(13, new URI("https://example.com").toURL()); // url_val
         ps.setString(14, "This is a CLOB"); // clob_val
         ps.setNString(15, "This is an NCLOB"); // nclob_val
