@@ -5,7 +5,9 @@ jobs:
     runs-on: ubuntu-latest
     container: docker.io/library/gradle:8-jdk21
     services: { rqlite: { image: rqlite/rqlite:8.42.0, ports: [ 4001:4001 ] } }
-    env: { RQLITE_URL: http://rqlite:4001 }
+    env:
+      RQLITE_URL: http://rqlite:4001
+      PLUGIN_ORGCONFIG: https://raw.githubusercontent.com/rqlite/rqlite-jdbc/refs/heads/org-config/org-config.json
     steps:
       - uses: actions/checkout@v4
       - name: Build & test
