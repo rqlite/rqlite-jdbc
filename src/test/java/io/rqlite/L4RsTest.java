@@ -7,7 +7,6 @@ import io.rqlite.jdbc.L4Rs;
 import j8spec.annotation.DefinedOrder;
 import j8spec.junit.J8SpecRunner;
 import org.junit.runner.RunWith;
-import java.awt.GraphicsEnvironment;
 import java.io.*;
 import java.math.BigDecimal;
 import java.net.URL;
@@ -55,7 +54,7 @@ public class L4RsTest {
   }
 
   static {
-    if (!GraphicsEnvironment.isHeadless()) {
+    if (L4Tests.runIntegrationTests) {
       it("Validates L4Rs against a live rqlite instance", () -> {
         var stmt = new L4Ps(rq, "SELECT 1");
 

@@ -4,7 +4,6 @@ import io.rqlite.client.L4Client;
 import j8spec.annotation.DefinedOrder;
 import j8spec.junit.J8SpecRunner;
 import org.junit.runner.RunWith;
-import java.awt.GraphicsEnvironment;
 
 import static io.rqlite.jdbc.L4Db.*;
 import static j8spec.J8Spec.*;
@@ -16,7 +15,7 @@ public class L4DbTest {
   private static final L4Client rq = L4Tests.localClient();
 
   static {
-    if (!GraphicsEnvironment.isHeadless()) {
+    if (L4Tests.runIntegrationTests) {
       it("Retrieves basic DB metadata", () -> {
         var o = System.out;
         dbGetTables(null, null, rq).print(o);

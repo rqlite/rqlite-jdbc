@@ -6,7 +6,6 @@ import io.rqlite.jdbc.L4Ps;
 import j8spec.annotation.DefinedOrder;
 import j8spec.junit.J8SpecRunner;
 import org.junit.runner.RunWith;
-import java.awt.GraphicsEnvironment;
 import java.io.*;
 import java.math.BigDecimal;
 import java.net.URI;
@@ -27,7 +26,7 @@ public class L4PsTest {
   private static final L4Client rq = L4Tests.localClient();
 
   static {
-    if (!GraphicsEnvironment.isHeadless()) {
+    if (L4Tests.runIntegrationTests) {
       it("Tests L4Ps query execution and parameter setting", () -> {
         setupPreparedStatementTestTable(rq);
         var insertSql = "INSERT INTO ps_test_data (" +
