@@ -90,7 +90,10 @@ public class L4Conn implements Connection {
   @Override public void commit() throws SQLException {
     checkClosed();
     L4Log.l4Debug("{} - commit", this);
-    client.stopBuffer(true, res -> L4Log.l4Debug("{} - commit result: {}", this, res));
+    client.stopBuffer(true, res -> {
+      L4Log.l4Debug("{} - commit result: {}", this, res);
+      // TODO collect commit warnings here.
+    });
   }
 
   @Override public void rollback() throws SQLException {

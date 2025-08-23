@@ -326,8 +326,7 @@ public class L4Ps extends L4St implements PreparedStatement {
       return;
     }
     if (cal != null) {
-      // Convert Date to LocalDate in the Calendar's timezone
-      var calInstance = (Calendar) cal.clone(); // Clone to avoid mutating the original
+      var calInstance = (Calendar) cal.clone();
       calInstance.setTimeInMillis(x.getTime());
       var localDate = LocalDate.of(
         calInstance.get(Calendar.YEAR),
@@ -347,8 +346,7 @@ public class L4Ps extends L4St implements PreparedStatement {
       return;
     }
     if (cal != null) {
-      // Convert Time to LocalTime in the Calendar's timezone
-      var calInstance = (Calendar) cal.clone(); // Clone to avoid mutating the original
+      var calInstance = (Calendar) cal.clone();
       calInstance.setTimeInMillis(x.getTime());
       var localTime = LocalTime.of(
         calInstance.get(Calendar.HOUR_OF_DAY),

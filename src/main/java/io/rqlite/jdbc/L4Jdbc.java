@@ -263,14 +263,12 @@ public class L4Jdbc {
       try {
         // Try parsing as ISO timestamp (e.g., "2023-10-15T00:00:00Z")
         try {
-          var instant = Instant.parse(value); // Handles ISO 8601 with UTC (Z)
-          var calendar = cal != null ? cal : Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-          var zdt = instant.atZone(calendar.getTimeZone().toZoneId());
-          return new Date(zdt.toInstant().toEpochMilli());
+          var instant = Instant.parse(value); // Handles ISO 8601 with UTC (Z) - absolute, no TZ needed
+          return new Date(instant.toEpochMilli());
         } catch (DateTimeParseException e) {
           // Fallback to ISO local date (e.g., "2023-10-15")
           var localDate = LocalDate.parse(value, DateTimeFormatter.ISO_LOCAL_DATE);
-          var calendar = cal != null ? cal : Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+          var calendar = cal != null ? cal : Calendar.getInstance(); // Use JVM default, as per JDBC spec
           var zdt = localDate.atStartOfDay(calendar.getTimeZone().toZoneId());
           return new Date(zdt.toInstant().toEpochMilli());
         }
@@ -280,7 +278,7 @@ public class L4Jdbc {
     } else if (sourceJdbcType == INTEGER) {
       try {
         var seconds = Long.parseLong(value);
-        return new Date(seconds * 1000L); // Unix timestamp
+        return new Date(seconds * 1000L); // Unix timestamp - absolute, assumes UTC epoch
       } catch (NumberFormatException e) {
         throw badTimestamp(columnIndex, value, e);
       }
@@ -302,7 +300,7 @@ public class L4Jdbc {
     } else if (sourceJdbcType == INTEGER) {
       try {
         var seconds = Long.parseLong(value);
-        return new Time(seconds * 1000L); // Unix timestamp
+        return new Time(seconds * 1000L); // Unix timestamp - absolute, assumes UTC epoch
       } catch (NumberFormatException e) {
         throw badTimestamp(columnIndex, value, e);
       }
@@ -319,12 +317,12 @@ public class L4Jdbc {
       try {
         // Try parsing as ISO timestamp (e.g., "2023-10-15T14:30:00Z")
         try {
-          var instant = Instant.parse(value);
+          var instant = Instant.parse(value); // Handles ISO 8601 with UTC (Z) - absolute, no TZ needed
           return new Timestamp(instant.toEpochMilli());
         } catch (DateTimeParseException e) {
           // Fallback to ISO local date-time (e.g., "2023-10-15 14:30:00")
           var localDateTime = LocalDateTime.parse(value, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-          var calendar = cal != null ? cal : Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+          var calendar = cal != null ? cal : Calendar.getInstance();
           var zdt = localDateTime.atZone(calendar.getTimeZone().toZoneId());
           return new Timestamp(zdt.toInstant().toEpochMilli());
         }
@@ -334,7 +332,7 @@ public class L4Jdbc {
     } else if (sourceJdbcType == INTEGER) {
       try {
         var seconds = Long.parseLong(value);
-        return new Timestamp(seconds * 1000L); // Unix timestamp
+        return new Timestamp(seconds * 1000L); // Unix timestamp - absolute, assumes UTC epoch
       } catch (NumberFormatException e) {
         throw badTimestamp(columnIndex, value, e);
       }

@@ -24,6 +24,7 @@ import static org.junit.Assert.*;
 public class L4PsTest {
 
   private static final L4Client rq = L4Tests.localClient();
+  private static final Calendar localCal = Calendar.getInstance();
 
   static {
     if (L4Tests.runIntegrationTests) {
@@ -37,7 +38,6 @@ public class L4PsTest {
 
         // Set parameters
         var blobData = "Hello, rqlite!".getBytes(StandardCharsets.UTF_8);
-        var utcCalendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
         ps.setBigDecimal(1, new BigDecimal("123.45")); // num_val
         ps.setBoolean(2, true); // bool_val
         ps.setByte(3, (byte) 127); // tiny_val
@@ -75,9 +75,12 @@ public class L4PsTest {
         assertEquals(3.14f, rs.getFloat("float_val"), 0.001f);
         assertEquals(2.71828, rs.getDouble("double_val"), 0.001);
         assertEquals("Hello, world!", rs.getString("text_val"));
-        assertEquals(Date.valueOf("2023-10-15").toString(), rs.getDate("date_val", utcCalendar).toString());
-        assertEquals(Time.valueOf("14:30:00"), rs.getTime("time_val", utcCalendar));
-        assertEquals(Timestamp.valueOf("2023-10-15 10:30:00"), rs.getTimestamp("ts_val", utcCalendar));
+
+        assertEquals(Date.valueOf("2023-10-15").toString(), rs.getDate("date_val").toString());
+        assertEquals(Date.valueOf("2023-10-15").toString(), rs.getDate("date_val", localCal).toString());
+
+        assertEquals(Time.valueOf("14:30:00"), rs.getTime("time_val", localCal));
+        assertEquals(Timestamp.valueOf("2023-10-15 10:30:00"), rs.getTimestamp("ts_val", localCal));
         assertEquals(new URI("https://example.com").toURL(), rs.getURL("url_val"));
         assertEquals("This is a CLOB", rs.getClob("clob_val").getSubString(1, 14));
         assertEquals("This is an NCLOB", rs.getNClob("nclob_val").getSubString(1, 16));
@@ -87,9 +90,9 @@ public class L4PsTest {
         rs.close();
         ps.close();
         selectPs.close();
-            });
+      });
 
-            it("Tests L4Ps stream and LOB parameter setting", () -> {
+      it("Tests L4Ps stream and LOB parameter setting", () -> {
         setupPreparedStatementTestTable(rq);
         var insertSql = "INSERT INTO ps_test_data (text_val, clob_val, nclob_val, nstring_val, blob_val) VALUES (?, ?, ?, ?, ?)";
         var ps = new L4Ps(rq, insertSql);
