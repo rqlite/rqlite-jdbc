@@ -2,7 +2,6 @@ package io.rqlite.jdbc;
 
 import io.rqlite.client.L4Client;
 import io.rqlite.client.L4Options;
-
 import java.sql.*;
 import java.util.*;
 import java.util.concurrent.Executor;
@@ -16,8 +15,9 @@ public class L4Conn implements Connection {
   private final L4Client   client;
   private final L4DbMeta   meta;
 
-  private   boolean isClosed;
-  private   int     holdability;
+  private boolean    isClosed;
+  private int        holdability;
+  private SQLWarning root;
 
   public L4Conn(L4Client client) throws SQLException {
     if (client == null) {
@@ -92,7 +92,19 @@ public class L4Conn implements Connection {
     L4Log.debug("{} - commit", this);
     client.stopBuffer(true, res -> {
       L4Log.debug("{} - commit result: {}", this, res);
-      // TODO collect commit warnings here.
+      if (res.results != null) {
+        for (var result : res.results) {
+          if (result != null && result.error != null) {
+            L4Log.trace(result.error);
+            var w = warnQuery(result.error);
+            if (this.root == null) {
+              this.root = w;
+            } else {
+              this.root.setNextWarning(w);
+            }
+          }
+        }
+      }
     });
   }
 
@@ -153,11 +165,12 @@ public class L4Conn implements Connection {
 
   @Override public SQLWarning getWarnings() throws SQLException {
     checkClosed();
-    return null;
+    return root;
   }
 
   @Override public void clearWarnings() throws SQLException {
     checkClosed();
+    this.root = null;
   }
 
   @Override public Statement createStatement(int resultSetType, int resultSetConcurrency) throws SQLException {
