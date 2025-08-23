@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build & test
-        run: gradle clean build jacocoTestReport
+        run: gradle clean test jacocoTestReport
       - name: Test results
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
