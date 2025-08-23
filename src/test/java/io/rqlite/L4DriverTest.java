@@ -11,11 +11,9 @@ import io.vacco.metolithe.core.*;
 import io.vacco.metolithe.dao.MtDaoMapper;
 import io.vacco.metolithe.id.MtMurmur3IFn;
 import io.vacco.metolithe.query.*;
-import io.vacco.shax.logging.ShOption;
 import j8spec.annotation.DefinedOrder;
 import j8spec.junit.J8SpecRunner;
 import org.junit.runner.RunWith;
-import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.sql.*;
 
@@ -42,23 +40,17 @@ public class L4DriverTest {
   };
 
   static {
-    ShOption.setSysProp(ShOption.IO_VACCO_SHAX_DEVMODE, "true");
-    ShOption.setSysProp(ShOption.IO_VACCO_SHAX_LOGLEVEL, "trace");
-
     if (L4Tests.runIntegrationTests) {
+
+      L4Tests.initLogging();
+
       it("Generates schema DAOs", () -> {
         var daoDir = new File("./src/test/java");
         var pkg = "io.rqlite.dao";
         new MtDaoMapper().mapSchema(daoDir, pkg, Fmt, schema);
       });
-      it("Applies Liquibase changesets",  () -> {
-        var log = LoggerFactory.getLogger(L4DriverTest.class);
-        L4Log.debugFn = log::debug;
-        L4Log.traceFn = log::trace;
-        MtLog.setInfoLogger(log::info);
-        MtLog.setDebugLogger(log::debug);
-        MtLog.setWarnLogger(log::warn);
 
+      it("Applies Liquibase changesets",  () -> {
         var ctx = "integration-test";
         var tables = new MtMapper().build(Fmt, schema);
         var changes = new MtLogMapper(L4Db.Main).process(tables, MtLevel.TABLE_COMPACT);
@@ -79,9 +71,10 @@ public class L4DriverTest {
 
         var props = DriverManager.getDriver(rqUrl).getPropertyInfo(null, null);
         for (var prop : props) {
-          log.info("{} ({})", prop.description, prop.required);
+          L4Log.info("{} ({})", prop.description, prop.required);
         }
       });
+
       it("Inserts data via object mapping", () -> {
         var idFn = new MtMurmur3IFn(1984);
         var fj = new MtJdbc().withSupplier(connFn);
@@ -130,6 +123,7 @@ public class L4DriverTest {
           }
         }
       });
+
       it("Queries table metadata", () -> {
         var tables = new String[] { "User", "Device", "Location" };
         try (var conn = connFn.get()) {
@@ -149,4 +143,5 @@ public class L4DriverTest {
       });
     }
   }
+
 }

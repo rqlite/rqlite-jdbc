@@ -75,7 +75,7 @@ public class L4Conn implements Connection {
 
   @Override public void setAutoCommit(boolean autoCommit) throws SQLException {
     checkClosed();
-    L4Log.l4Debug("{} - setAutoCommit: [{}]", this, autoCommit);
+    L4Log.debug("{} - setAutoCommit: [{}]", this, autoCommit);
     if (!autoCommit) {
       client.startBuffer();
     }
@@ -83,22 +83,22 @@ public class L4Conn implements Connection {
 
   @Override public boolean getAutoCommit() throws SQLException {
     checkClosed();
-    L4Log.l4Debug("{} - getAutoCommit [{}]", this, !client.isBuffering());
+    L4Log.debug("{} - getAutoCommit [{}]", this, !client.isBuffering());
     return !client.isBuffering();
   }
 
   @Override public void commit() throws SQLException {
     checkClosed();
-    L4Log.l4Debug("{} - commit", this);
+    L4Log.debug("{} - commit", this);
     client.stopBuffer(true, res -> {
-      L4Log.l4Debug("{} - commit result: {}", this, res);
+      L4Log.debug("{} - commit result: {}", this, res);
       // TODO collect commit warnings here.
     });
   }
 
   @Override public void rollback() throws SQLException {
     checkClosed();
-    L4Log.l4Debug("{} - rollback", this);
+    L4Log.debug("{} - rollback", this);
     client.stopBuffer(false, null);
   }
 
@@ -106,7 +106,7 @@ public class L4Conn implements Connection {
     if (isClosed) {
       return;
     }
-    L4Log.l4Trace("{} - close", this);
+    L4Log.trace("{} - close", this);
     isClosed = true;
     this.client.close();
   }

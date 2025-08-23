@@ -1,6 +1,7 @@
 package io.rqlite;
 
 import io.rqlite.client.L4Client;
+import io.rqlite.jdbc.L4Log;
 import io.rqlite.jdbc.L4NClob;
 import io.rqlite.jdbc.L4Ps;
 import io.rqlite.jdbc.L4Utc;
@@ -13,6 +14,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.sql.Date;
+import java.time.ZoneId;
 import java.util.*;
 
 import static io.rqlite.L4Tests.*;
@@ -28,6 +30,11 @@ public class L4PsTest {
 
   static {
     if (L4Tests.runIntegrationTests) {
+      L4Tests.initLogging();
+      L4Log.info("===============================");
+      L4Log.info(ZoneId.systemDefault().toString());
+      L4Log.info("===============================");
+
       it("Tests L4Ps query execution and parameter setting", () -> {
         setupPreparedStatementTestTable(rq);
         var insertSql = "INSERT INTO ps_test_data (" +

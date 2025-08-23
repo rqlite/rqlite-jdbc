@@ -41,7 +41,7 @@ public class L4Client implements Closeable {
 
   private HttpResponse<String> doPostRequest(String url, String body) {
     try {
-      L4Log.l4Trace("{} - POST {}", this, body);
+      L4Log.trace("{} - POST {}", this, body);
       var builder = HttpRequest.newBuilder().uri(URI.create(url));
       if (L4Options.timeoutSec > 0) {
         builder.timeout(Duration.ofSeconds(L4Options.timeoutSec));
@@ -121,7 +121,7 @@ public class L4Client implements Closeable {
 
   public L4Response execute(boolean transaction, L4Statement ... statements) {
     if (isBuffering()) {
-      L4Log.l4Trace("{} - defer: {}", this, Arrays.toString(statements));
+      L4Log.trace("{} - defer: {}", this, Arrays.toString(statements));
       var res = deferred(statements);
       res.results = new ArrayList<>();
       res.results.add(new L4Result(new JsonObject()));
