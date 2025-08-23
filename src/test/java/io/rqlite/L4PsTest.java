@@ -28,10 +28,6 @@ public class L4PsTest {
 
   private static final L4Client rq = L4Tests.localClient();
 
-  private static boolean inUtcZone() {
-    return ZoneId.systemDefault().equals(L4Utc.UtcZid);
-  }
-
   static {
     if (L4Tests.runIntegrationTests) {
       L4Tests.initLogging();
@@ -92,7 +88,7 @@ public class L4PsTest {
         );
         assertEquals(
           L4Utc.utcOf(Date.valueOf("2023-10-15")).toString(),
-          rs.getDate("date_val", Calendar.getInstance()).toString()
+          L4Utc.utcOf(rs.getDate("date_val", Calendar.getInstance())).toString()
         );
         assertEquals(
           L4Utc.utcOf(Time.valueOf("14:30:00")),
