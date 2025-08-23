@@ -3,6 +3,7 @@ package io.rqlite;
 import io.rqlite.client.L4Client;
 import io.rqlite.jdbc.L4NClob;
 import io.rqlite.jdbc.L4Ps;
+import io.rqlite.jdbc.L4Utc;
 import j8spec.annotation.DefinedOrder;
 import j8spec.junit.J8SpecRunner;
 import org.junit.runner.RunWith;
@@ -24,7 +25,6 @@ import static org.junit.Assert.*;
 public class L4PsTest {
 
   private static final L4Client rq = L4Tests.localClient();
-  private static final Calendar localCal = Calendar.getInstance();
 
   static {
     if (L4Tests.runIntegrationTests) {
@@ -75,12 +75,22 @@ public class L4PsTest {
         assertEquals(3.14f, rs.getFloat("float_val"), 0.001f);
         assertEquals(2.71828, rs.getDouble("double_val"), 0.001);
         assertEquals("Hello, world!", rs.getString("text_val"));
-
-        assertEquals(Date.valueOf("2023-10-15").toString(), rs.getDate("date_val").toString());
-        assertEquals(Date.valueOf("2023-10-15").toString(), rs.getDate("date_val", localCal).toString());
-
-        assertEquals(Time.valueOf("14:30:00"), rs.getTime("time_val", localCal));
-        assertEquals(Timestamp.valueOf("2023-10-15 10:30:00"), rs.getTimestamp("ts_val", localCal));
+        assertEquals(
+          L4Utc.utcOf(Date.valueOf("2023-10-14")).toString(),
+          rs.getDate("date_val").toString()
+        );
+        assertEquals(
+          L4Utc.utcOf(Date.valueOf("2023-10-14")).toString(),
+          rs.getDate("date_val", Calendar.getInstance()).toString()
+        );
+        assertEquals(
+          L4Utc.utcOf(Time.valueOf("14:30:00")),
+          rs.getTime("time_val").toLocalTime()
+        );
+        assertEquals(
+          Timestamp.valueOf("2023-10-15 10:30:00"),
+          rs.getTimestamp("ts_val")
+        );
         assertEquals(new URI("https://example.com").toURL(), rs.getURL("url_val"));
         assertEquals("This is a CLOB", rs.getClob("clob_val").getSubString(1, 14));
         assertEquals("This is an NCLOB", rs.getNClob("nclob_val").getSubString(1, 16));
@@ -278,7 +288,10 @@ public class L4PsTest {
         selectPs.setInt(1, 1);
         var rs = selectPs.executeQuery();
         assertTrue(rs.next());
-        assertEquals(Date.valueOf("2023-10-15").toString(), rs.getDate("date_val", utcCalendar).toString());
+        assertEquals(
+          L4Utc.utcOf(Date.valueOf("2023-10-15")),
+          L4Utc.utcOf(rs.getDate("date_val", utcCalendar))
+        );
         assertEquals(time, rs.getTime("time_val", utcCalendar));
         assertEquals(timestamp, rs.getTimestamp("ts_val", utcCalendar));
         assertFalse(rs.next());
@@ -667,8 +680,14 @@ public class L4PsTest {
         assertEquals(textVal, rs.getString("text_val"));
         assertTrue(rs.getBoolean("bool_val"));
         assertArrayEquals(blobData, rs.getBytes("blob_val"));
-        assertEquals(Date.valueOf("2023-10-15").toString(), rs.getDate("date_val").toString());
-        assertEquals(Timestamp.valueOf("2023-10-15 14:30:00.0").toString(), rs.getTimestamp("ts_val").toString());
+        assertEquals(
+          L4Utc.utcOf(Date.valueOf("2023-10-15")),
+          L4Utc.utcOf(rs.getDate("date_val"))
+        );
+        assertEquals(
+          L4Utc.utcFmtOf(Timestamp.valueOf("2023-10-15 14:30:00.0")),
+          L4Utc.utcFmtOf(rs.getTimestamp("ts_val"))
+        );
         assertFalse(rs.next());
         rs.close();
 
@@ -724,8 +743,11 @@ public class L4PsTest {
         assertEquals("123", rs.getString("text_val"));
         assertTrue(rs.getBoolean("bool_val"));
         assertArrayEquals(blobData, rs.getBytes("blob_val"));
-        assertEquals(Date.valueOf("2023-11-01").toString(), rs.getDate("date_val").toString());
-        assertEquals(Timestamp.valueOf("2023-11-01 15:45:00"), rs.getTimestamp("ts_val"));
+        assertEquals(L4Utc.utcOf(Date.valueOf("2023-11-01")), L4Utc.utcOf(rs.getDate("date_val")));
+        assertEquals(
+          Timestamp.valueOf("2023-11-01 15:45:00"),
+          rs.getTimestamp("ts_val")
+        );
         assertFalse(rs.next());
         rs.close();
 
