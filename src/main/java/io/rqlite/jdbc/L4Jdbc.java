@@ -278,7 +278,7 @@ public class L4Jdbc {
     } else if (sourceJdbcType == INTEGER) {
       try {
         var seconds = Long.parseLong(value);
-        return new Date(seconds * 1000L); // Unix timestamp - absolute, assumes UTC epoch
+        return new Date(seconds * 1000L); // Unix timestamp
       } catch (NumberFormatException e) {
         throw badTimestamp(columnIndex, value, e);
       }
@@ -300,7 +300,7 @@ public class L4Jdbc {
     } else if (sourceJdbcType == INTEGER) {
       try {
         var seconds = Long.parseLong(value);
-        return new Time(seconds * 1000L); // Unix timestamp - absolute, assumes UTC epoch
+        return new Time(seconds * 1000L); // Unix timestamp
       } catch (NumberFormatException e) {
         throw badTimestamp(columnIndex, value, e);
       }
@@ -334,7 +334,7 @@ public class L4Jdbc {
     } else if (sourceJdbcType == INTEGER) {
       try {
         var seconds = Long.parseLong(value);
-        return new Timestamp(seconds * 1000L); // Unix timestamp - absolute, assumes UTC epoch
+        return new Timestamp(seconds * 1000L); // Unix timestamp
       } catch (NumberFormatException e) {
         throw badTimestamp(columnIndex, value, e);
       }
