@@ -28,6 +28,10 @@ public class L4PsTest {
 
   private static final L4Client rq = L4Tests.localClient();
 
+  private static boolean inUtcZone() {
+    return ZoneId.systemDefault().equals(L4Utc.UtcZid);
+  }
+
   static {
     if (L4Tests.runIntegrationTests) {
       L4Tests.initLogging();
@@ -83,11 +87,11 @@ public class L4PsTest {
         assertEquals(2.71828, rs.getDouble("double_val"), 0.001);
         assertEquals("Hello, world!", rs.getString("text_val"));
         assertEquals(
-          L4Utc.utcOf(Date.valueOf("2023-10-14")).toString(),
-          rs.getDate("date_val").toString()
+          L4Utc.utcOf(Date.valueOf("2023-10-15")),
+          L4Utc.utcOf(rs.getDate("date_val"))
         );
         assertEquals(
-          L4Utc.utcOf(Date.valueOf("2023-10-14")).toString(),
+          L4Utc.utcOf(Date.valueOf("2023-10-15")).toString(),
           rs.getDate("date_val", Calendar.getInstance()).toString()
         );
         assertEquals(
