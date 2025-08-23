@@ -148,6 +148,37 @@ Only `TRANSACTION_SERIALIZABLE` is supported, with `linearizable` read consisten
 
 User-defined SQL types (UDTs) are not supported. `getTypeMap` and `setTypeMap` are implemented for compliance but have no effect.
 
+### Date/Time Handling
+
+The driver normalizes all `java.sql.Date`, `Time`, and `Timestamp` values to UTC before storage in rqlite, ensuring consistent round-trip behavior regardless of the JVM's default timezone.
+
+This is necessary because rqlite normalizes date/time outputs for typed columns (`DATE`, `DATETIME`, `TIMESTAMP`) to ISO 8601 format with a `'Z'` suffix (indicating UTC), which could otherwise cause shifts in the retrieved instant if local timezones are involved.
+
+#### Setters (`setDate`, `setTime`, `setTimestamp`)
+
+The input value's instant (milliseconds since UTC epoch) is converted to UTC components and stored as a string (e.g., `'2025-08-23 13:00:00'` for timestamps, without `'Z'`). The optional `Calendar` parameter is ignored, as forcing UTC normalization preserves the original instant across environments.
+
+If timezone-specific adjustments are needed, perform them in your application before creating the `Date`/`Time`/`Timestamp` objects.
+
+#### Getters (`getDate`, `getTime`, `getTimestamp`)
+
+Values are parsed assuming UTC (via `Instant.parse` for ISO strings with `'Z'`). The returned objects hold accurate UTC milliseconds internally.
+
+However, due to legacy `java.sql` types:
+
+- `toString()` on `Date`/`Time`/`Timestamp` formats components in the JVM's default timezone, which may show shifted values (e.g., a UTC midnight might display as the previous day in EST). This is a display artifact—the underlying instant is unchanged.
+- To ensure consistent display or interpretation, provide a `Calendar` set to UTC (e.g., `Calendar.getInstance(TimeZone.getTimeZone("UTC"))`) in getters.
+
+#### Recommendations:
+
+- Store all dates/times in UTC to avoid complexity.
+- Test in multiple JVM timezones (e.g., via `-Duser.timezone=UTC`) to verify behavior.
+- If preserving original timezones is critical, store offsets or timezone names in separate columns, as rqlite/SQLite does not natively support timezone-aware types.
+
+This approach deviates slightly from standard JDBC for timezone-agnostic databases but prioritizes reliability with rqlite's output quirks.
+
+For examples, see [L4PsTest](./src/test/java/io/rqlite/L4PsTest.java).
+
 ## Contributing
 
 Contributions are welcome! Please submit issues or pull requests to this GitHub repository.
