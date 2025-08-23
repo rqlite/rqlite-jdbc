@@ -14,6 +14,7 @@ import java.util.Objects;
 
   @MtNotNull
   @MtVarchar(256)
+  @MtDao(loadEq = true)
   public String nickName;
 
   public static User of(String email, String nickName) {

@@ -21,7 +21,7 @@ public class L4StTest {
   private static final L4Client rq = L4Tests.localClient();
 
   // Setup helper to create and populate test table
-  private static void setupTestTable(L4Client rq) throws Exception {
+  private static void setupTestTable(L4Client rq) {
     // Drop existing table
     var dr = rq.executeSingle("DROP TABLE IF EXISTS st_test_data");
     assertEquals(200, dr.statusCode);

@@ -10,8 +10,6 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.sql.Date;
-import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.*;
 
 import static io.rqlite.client.L4Err.*;
@@ -183,17 +181,31 @@ public class L4Ps extends L4St implements PreparedStatement {
 
   @Override public void setDate(int parameterIndex, Date x) throws SQLException {
     checkClosed();
-    statement.withPositionalParam(parameterIndex - 1, x != null ? x.toString() : null);
+    if (x == null) {
+      setNull(parameterIndex, Types.DATE);
+      return;
+    }
+    var utcDate = L4Utc.utcOf(x);
+    statement.withPositionalParam(parameterIndex - 1, utcDate.toString()); // Format: YYYY-MM-DD
   }
 
   @Override public void setTime(int parameterIndex, Time x) throws SQLException {
     checkClosed();
-    statement.withPositionalParam(parameterIndex - 1, x != null ? x.toString() : null);
+    if (x == null) {
+      setNull(parameterIndex, Types.TIME);
+      return;
+    }
+    var utcTime = L4Utc.utcOf(x);
+    statement.withPositionalParam(parameterIndex - 1, utcTime.toString()); // Format: HH:MM:SS
   }
 
   @Override public void setTimestamp(int parameterIndex, Timestamp x) throws SQLException {
     checkClosed();
-    statement.withPositionalParam(parameterIndex - 1, x != null ? x.toString() : null);
+    if (x == null) {
+      setNull(parameterIndex, Types.TIMESTAMP);
+      return;
+    }
+    statement.withPositionalParam(parameterIndex - 1, L4Utc.utcFmtOf(x));
   }
 
   @Override public void setAsciiStream(int parameterIndex, InputStream x, int length) throws SQLException {
@@ -325,19 +337,8 @@ public class L4Ps extends L4St implements PreparedStatement {
       setNull(parameterIndex, Types.DATE);
       return;
     }
-    if (cal != null) {
-      // Convert Date to LocalDate in the Calendar's timezone
-      var calInstance = (Calendar) cal.clone(); // Clone to avoid mutating the original
-      calInstance.setTimeInMillis(x.getTime());
-      var localDate = LocalDate.of(
-        calInstance.get(Calendar.YEAR),
-        calInstance.get(Calendar.MONTH) + 1, // Calendar months are 0-based
-        calInstance.get(Calendar.DAY_OF_MONTH)
-      );
-      statement.withPositionalParam(parameterIndex - 1, localDate.toString()); // Format: YYYY-MM-DD
-    } else {
-      statement.withPositionalParam(parameterIndex - 1, x.toString()); // Format: YYYY-MM-DD
-    }
+    var utcDate = L4Utc.utcOf(x);
+    statement.withPositionalParam(parameterIndex - 1, utcDate.toString()); // Format: YYYY-MM-DD
   }
 
   @Override public void setTime(int parameterIndex, Time x, Calendar cal) throws SQLException {
@@ -346,19 +347,8 @@ public class L4Ps extends L4St implements PreparedStatement {
       setNull(parameterIndex, Types.TIME);
       return;
     }
-    if (cal != null) {
-      // Convert Time to LocalTime in the Calendar's timezone
-      var calInstance = (Calendar) cal.clone(); // Clone to avoid mutating the original
-      calInstance.setTimeInMillis(x.getTime());
-      var localTime = LocalTime.of(
-        calInstance.get(Calendar.HOUR_OF_DAY),
-        calInstance.get(Calendar.MINUTE),
-        calInstance.get(Calendar.SECOND)
-      );
-      statement.withPositionalParam(parameterIndex - 1, localTime.toString()); // Format: HH:MM:SS
-    } else {
-      statement.withPositionalParam(parameterIndex - 1, x.toString()); // Format: HH:MM:SS
-    }
+    var utcTime = L4Utc.utcOf(x);
+    statement.withPositionalParam(parameterIndex - 1, utcTime.toString()); // Format: HH:MM:SS
   }
 
   @Override public void setTimestamp(int parameterIndex, Timestamp x, Calendar cal) throws SQLException {
@@ -367,12 +357,7 @@ public class L4Ps extends L4St implements PreparedStatement {
       setNull(parameterIndex, Types.TIMESTAMP);
       return;
     }
-    if (cal != null) {
-      var instant = x.toInstant().atZone(cal.getTimeZone().toZoneId());
-      statement.withPositionalParam(parameterIndex - 1, instant.toLocalDateTime().toString());
-    } else {
-      statement.withPositionalParam(parameterIndex - 1, x.toString());
-    }
+    statement.withPositionalParam(parameterIndex - 1, L4Utc.utcFmtOf(x));
   }
 
   @Override public void setNull(int parameterIndex, int sqlType, String typeName) throws SQLException {

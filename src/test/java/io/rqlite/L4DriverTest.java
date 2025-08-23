@@ -11,11 +11,9 @@ import io.vacco.metolithe.core.*;
 import io.vacco.metolithe.dao.MtDaoMapper;
 import io.vacco.metolithe.id.MtMurmur3IFn;
 import io.vacco.metolithe.query.*;
-import io.vacco.shax.logging.ShOption;
 import j8spec.annotation.DefinedOrder;
 import j8spec.junit.J8SpecRunner;
 import org.junit.runner.RunWith;
-import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.sql.*;
 
@@ -33,32 +31,22 @@ public class L4DriverTest {
   public static final String        rqUrl = String.format("jdbc:sqlite:%s", L4Tests.RQLITE_URL);
   public static final L4Client      rq = L4Tests.localClient();
   public static final MtCaseFormat  Fmt = MtCaseFormat.KEEP_CASE;
-  public static final MtConn        connFn = () -> {
-    try {
-      return DriverManager.getConnection(rqUrl);
-    } catch (SQLException e) {
-      throw new IllegalStateException(e);
-    }
-  };
 
   static {
-    ShOption.setSysProp(ShOption.IO_VACCO_SHAX_DEVMODE, "true");
-    ShOption.setSysProp(ShOption.IO_VACCO_SHAX_LOGLEVEL, "trace");
-
     if (L4Tests.runIntegrationTests) {
+      L4Tests.initLogging();
+
+      var hkConfig = new HikariConfig();
+      hkConfig.setJdbcUrl(rqUrl);
+      var ds = new HikariDataSource(hkConfig);
+
       it("Generates schema DAOs", () -> {
         var daoDir = new File("./src/test/java");
         var pkg = "io.rqlite.dao";
         new MtDaoMapper().mapSchema(daoDir, pkg, Fmt, schema);
       });
-      it("Applies Liquibase changesets",  () -> {
-        var log = LoggerFactory.getLogger(L4DriverTest.class);
-        L4Log.debugFn = log::debug;
-        L4Log.traceFn = log::trace;
-        MtLog.setInfoLogger(log::info);
-        MtLog.setDebugLogger(log::debug);
-        MtLog.setWarnLogger(log::warn);
 
+      it("Applies Liquibase changesets",  () -> {
         var ctx = "integration-test";
         var tables = new MtMapper().build(Fmt, schema);
         var changes = new MtLogMapper(L4Db.Main).process(tables, MtLevel.TABLE_COMPACT);
@@ -66,25 +54,20 @@ public class L4DriverTest {
           chg.source = L4DriverTest.class.getCanonicalName();
           chg.context = ctx;
         }
-
-        var hkConfig = new HikariConfig();
-        hkConfig.setJdbcUrl(rqUrl);
-        try (var ds = new HikariDataSource(hkConfig)) {
-          try (var conn = ds.getConnection()) {
-            new MtApply(conn, L4Db.Main)
-              .withAutoCommit(true)
-              .applyChanges(changes, ctx);
-          }
+        try (var conn = ds.getConnection()) {
+          new MtApply(conn, L4Db.Main)
+            .withAutoCommit(true)
+            .applyChanges(changes, ctx);
         }
-
         var props = DriverManager.getDriver(rqUrl).getPropertyInfo(null, null);
         for (var prop : props) {
-          log.info("{} ({})", prop.description, prop.required);
+          L4Log.info("{} ({})", prop.description, prop.required);
         }
       });
+
       it("Inserts data via object mapping", () -> {
         var idFn = new MtMurmur3IFn(1984);
-        var fj = new MtJdbc().withSupplier(connFn);
+        var fj = new MtJdbc(ds);
         var userDao = new UserDao(L4Db.Main, Fmt, fj, idFn);
         var deviceDao = new DeviceDao(L4Db.Main, Fmt, fj, idFn);
         var locationDao = new LocationDao(L4Db.Main, Fmt, fj, idFn);
@@ -101,11 +84,9 @@ public class L4DriverTest {
           resList.add(res1);
         });
 
-        var res2 = userDao.saveLater(User.of("steve@me.com", "Steve"));
-        var res3 = userDao.saveLater(User.of("linda@me.com", "Linda"));
-        userDao.sql().transaction((connFn, conn) -> {
-          res2.on(conn);
-          res3.on(conn);
+        userDao.sql().tx((connFn, conn) -> {
+          var res2 = userDao.save(User.of("steve@me.com", "Steve"));
+          var res3 = userDao.save(User.of("linda@me.com", "Linda"));
         });
 
         assertEquals(1, userDao.loadWhereNickNameEq("JoeLol").size());
@@ -130,9 +111,10 @@ public class L4DriverTest {
           }
         }
       });
+
       it("Queries table metadata", () -> {
         var tables = new String[] { "User", "Device", "Location" };
-        try (var conn = connFn.get()) {
+        try (var conn = DriverManager.getConnection(rqUrl)) {
           for (var table : tables) {
             var idx = (L4Rs) conn.getMetaData().getIndexInfo(null, null, table, true, false);
             var cols = L4Db.dbGetColumns(table, null, rq);
@@ -147,6 +129,9 @@ public class L4DriverTest {
           }
         }
       });
+
+      it("Closes the data source", ds::close);
     }
   }
+
 }

@@ -1,8 +1,10 @@
 package io.rqlite;
 
 import io.rqlite.client.L4Client;
+import io.rqlite.jdbc.L4Log;
 import io.rqlite.jdbc.L4NClob;
 import io.rqlite.jdbc.L4Ps;
+import io.rqlite.jdbc.L4Utc;
 import j8spec.annotation.DefinedOrder;
 import j8spec.junit.J8SpecRunner;
 import org.junit.runner.RunWith;
@@ -12,6 +14,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.sql.Date;
+import java.time.ZoneId;
 import java.util.*;
 
 import static io.rqlite.L4Tests.*;
@@ -27,6 +30,11 @@ public class L4PsTest {
 
   static {
     if (L4Tests.runIntegrationTests) {
+      L4Tests.initLogging();
+      L4Log.info("===============================");
+      L4Log.info(ZoneId.systemDefault().toString());
+      L4Log.info("===============================");
+
       it("Tests L4Ps query execution and parameter setting", () -> {
         setupPreparedStatementTestTable(rq);
         var insertSql = "INSERT INTO ps_test_data (" +
@@ -37,7 +45,6 @@ public class L4PsTest {
 
         // Set parameters
         var blobData = "Hello, rqlite!".getBytes(StandardCharsets.UTF_8);
-        var utcCalendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
         ps.setBigDecimal(1, new BigDecimal("123.45")); // num_val
         ps.setBoolean(2, true); // bool_val
         ps.setByte(3, (byte) 127); // tiny_val
@@ -75,9 +82,22 @@ public class L4PsTest {
         assertEquals(3.14f, rs.getFloat("float_val"), 0.001f);
         assertEquals(2.71828, rs.getDouble("double_val"), 0.001);
         assertEquals("Hello, world!", rs.getString("text_val"));
-        assertEquals(Date.valueOf("2023-10-15").toString(), rs.getDate("date_val", utcCalendar).toString());
-        assertEquals(Time.valueOf("14:30:00"), rs.getTime("time_val", utcCalendar));
-        assertEquals(Timestamp.valueOf("2023-10-15 10:30:00"), rs.getTimestamp("ts_val", utcCalendar));
+        assertEquals(
+          L4Utc.utcOf(Date.valueOf("2023-10-15")),
+          L4Utc.utcOf(rs.getDate("date_val"))
+        );
+        assertEquals(
+          L4Utc.utcOf(Date.valueOf("2023-10-15")).toString(),
+          L4Utc.utcOf(rs.getDate("date_val", Calendar.getInstance())).toString()
+        );
+        assertEquals(
+          L4Utc.utcOf(Time.valueOf("14:30:00")),
+          rs.getTime("time_val").toLocalTime()
+        );
+        assertEquals(
+          Timestamp.valueOf("2023-10-15 10:30:00"),
+          rs.getTimestamp("ts_val")
+        );
         assertEquals(new URI("https://example.com").toURL(), rs.getURL("url_val"));
         assertEquals("This is a CLOB", rs.getClob("clob_val").getSubString(1, 14));
         assertEquals("This is an NCLOB", rs.getNClob("nclob_val").getSubString(1, 16));
@@ -87,9 +107,9 @@ public class L4PsTest {
         rs.close();
         ps.close();
         selectPs.close();
-            });
+      });
 
-            it("Tests L4Ps stream and LOB parameter setting", () -> {
+      it("Tests L4Ps stream and LOB parameter setting", () -> {
         setupPreparedStatementTestTable(rq);
         var insertSql = "INSERT INTO ps_test_data (text_val, clob_val, nclob_val, nstring_val, blob_val) VALUES (?, ?, ?, ?, ?)";
         var ps = new L4Ps(rq, insertSql);
@@ -275,10 +295,97 @@ public class L4PsTest {
         selectPs.setInt(1, 1);
         var rs = selectPs.executeQuery();
         assertTrue(rs.next());
-        assertEquals(Date.valueOf("2023-10-15").toString(), rs.getDate("date_val", utcCalendar).toString());
+        assertEquals(
+          L4Utc.utcOf(Date.valueOf("2023-10-15")),
+          L4Utc.utcOf(rs.getDate("date_val", utcCalendar))
+        );
         assertEquals(time, rs.getTime("time_val", utcCalendar));
         assertEquals(timestamp, rs.getTimestamp("ts_val", utcCalendar));
         assertFalse(rs.next());
+        rs.close();
+        ps.close();
+        selectPs.close();
+      });
+
+      it("Tests L4Ps date and time handling around DST transitions and leap seconds", () -> {
+        setupPreparedStatementTestTable(rq);
+        var insertSql = "INSERT INTO ps_test_data (date_val, time_val, ts_val) VALUES (?, ?, ?)";
+        var ps = new L4Ps(rq, insertSql);
+
+        // Test data around DST transitions (US/Eastern example: 2024 DST start on March 10, end on November 3)
+        // DST start: 2024-03-10 01:59:59 (EST) -> next is 03:00:00 (EDT), skipping 02:00:00
+        var dstStartTs = Timestamp.valueOf("2024-03-10 01:59:59"); // Pre-transition
+
+        // DST end: 2024-11-03 01:59:59 (EDT) -> next is 01:00:00 (EST), repeating 01:00:00
+        var dstEndTs = Timestamp.valueOf("2024-11-03 01:59:59"); // Pre-transition
+        var dstEndTsPost = Timestamp.valueOf("2024-11-03 01:00:00"); // Post-transition (ambiguous hour)
+
+        // Leap second example: 2016-12-31 23:59:59 -> 23:59:60 (leap second) -> 2017-01-01 00:00:00
+        // Note: Java Timestamp doesn't directly support :60, so test boundary around it
+        var leapSecondTs = Timestamp.valueOf("2016-12-31 23:59:59");
+        var utcCalendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+        var easternCalendar = Calendar.getInstance(TimeZone.getTimeZone("America/New_York"));
+
+        // Insert DST start values
+        ps.setDate(1, new Date(dstStartTs.getTime()), easternCalendar);
+        ps.setTime(2, new Time(dstStartTs.getTime()), easternCalendar);
+        ps.setTimestamp(3, dstStartTs, easternCalendar);
+        ps.executeUpdate();
+
+        // Insert DST end values
+        ps.clearParameters();
+        ps.setDate(1, new Date(dstEndTs.getTime()), easternCalendar);
+        ps.setTime(2, new Time(dstEndTs.getTime()), easternCalendar);
+        ps.setTimestamp(3, dstEndTs, easternCalendar);
+        ps.executeUpdate();
+
+        // Insert leap second boundary
+        ps.clearParameters();
+        ps.setDate(1, new Date(leapSecondTs.getTime()), utcCalendar);
+        ps.setTime(2, new Time(leapSecondTs.getTime()), utcCalendar);
+        ps.setTimestamp(3, leapSecondTs, utcCalendar);
+        ps.executeUpdate();
+
+        // Verify retrieved values preserve original instants
+        var selectPs = new L4Ps(rq, "SELECT date_val, time_val, ts_val FROM ps_test_data WHERE id = ?");
+
+        // Check DST start (id=1)
+        selectPs.setInt(1, 1);
+        var rs = selectPs.executeQuery();
+        assertTrue(rs.next());
+        assertEquals(L4Utc.utcOf(new Date(dstStartTs.getTime())), L4Utc.utcOf(rs.getDate("date_val", utcCalendar)));
+        assertEquals(new Time(dstStartTs.getTime()).toLocalTime(), rs.getTime("time_val", utcCalendar).toLocalTime());
+        assertEquals(dstStartTs, rs.getTimestamp("ts_val", utcCalendar));
+        assertFalse(rs.next());
+
+        // Check DST end (id=2)
+        selectPs.setInt(1, 2);
+        rs = selectPs.executeQuery();
+        assertTrue(rs.next());
+        assertEquals(L4Utc.utcOf(new Date(dstEndTs.getTime())), L4Utc.utcOf(rs.getDate("date_val", utcCalendar)));
+        assertEquals(new Time(dstEndTs.getTime()).toLocalTime(), rs.getTime("time_val", utcCalendar).toLocalTime());
+        assertEquals(dstEndTs, rs.getTimestamp("ts_val", utcCalendar));
+        assertFalse(rs.next());
+
+        // Check leap second boundary (id=3)
+        selectPs.setInt(1, 3);
+        rs = selectPs.executeQuery();
+        assertTrue(rs.next());
+        assertEquals(L4Utc.utcOf(new Date(leapSecondTs.getTime())), L4Utc.utcOf(rs.getDate("date_val", utcCalendar)));
+        assertEquals(new Time(leapSecondTs.getTime()).toLocalTime(), rs.getTime("time_val", utcCalendar).toLocalTime());
+        assertEquals(leapSecondTs, rs.getTimestamp("ts_val", utcCalendar));
+        assertFalse(rs.next());
+
+        // Additional check: Insert and retrieve ambiguous DST end time
+        ps.clearParameters();
+        ps.setTimestamp(3, dstEndTsPost, easternCalendar);
+        ps.executeUpdate(); // id=4
+        selectPs.setInt(1, 4);
+        rs = selectPs.executeQuery();
+        assertTrue(rs.next());
+        assertEquals(dstEndTsPost, rs.getTimestamp("ts_val", utcCalendar));
+        assertFalse(rs.next());
+
         rs.close();
         ps.close();
         selectPs.close();
@@ -664,8 +771,14 @@ public class L4PsTest {
         assertEquals(textVal, rs.getString("text_val"));
         assertTrue(rs.getBoolean("bool_val"));
         assertArrayEquals(blobData, rs.getBytes("blob_val"));
-        assertEquals(Date.valueOf("2023-10-15").toString(), rs.getDate("date_val").toString());
-        assertEquals(Timestamp.valueOf("2023-10-15 14:30:00.0").toString(), rs.getTimestamp("ts_val").toString());
+        assertEquals(
+          L4Utc.utcOf(Date.valueOf("2023-10-15")),
+          L4Utc.utcOf(rs.getDate("date_val"))
+        );
+        assertEquals(
+          L4Utc.utcFmtOf(Timestamp.valueOf("2023-10-15 14:30:00.0")),
+          L4Utc.utcFmtOf(rs.getTimestamp("ts_val"))
+        );
         assertFalse(rs.next());
         rs.close();
 
@@ -721,8 +834,11 @@ public class L4PsTest {
         assertEquals("123", rs.getString("text_val"));
         assertTrue(rs.getBoolean("bool_val"));
         assertArrayEquals(blobData, rs.getBytes("blob_val"));
-        assertEquals(Date.valueOf("2023-11-01").toString(), rs.getDate("date_val").toString());
-        assertEquals(Timestamp.valueOf("2023-11-01 15:45:00"), rs.getTimestamp("ts_val"));
+        assertEquals(L4Utc.utcOf(Date.valueOf("2023-11-01")), L4Utc.utcOf(rs.getDate("date_val")));
+        assertEquals(
+          Timestamp.valueOf("2023-11-01 15:45:00"),
+          rs.getTimestamp("ts_val")
+        );
         assertFalse(rs.next());
         rs.close();
 

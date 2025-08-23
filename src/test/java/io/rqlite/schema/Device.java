@@ -10,7 +10,7 @@ import io.vacco.metolithe.annotations.*;
   @MtPk(idx = 0)
   public int uid;
 
-  @MtField
+  @MtCol
   @MtPk(idx = 1)
   public int number;
 

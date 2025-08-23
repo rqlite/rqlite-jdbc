@@ -263,14 +263,12 @@ public class L4Jdbc {
       try {
         // Try parsing as ISO timestamp (e.g., "2023-10-15T00:00:00Z")
         try {
-          var instant = Instant.parse(value); // Handles ISO 8601 with UTC (Z)
-          var calendar = cal != null ? cal : Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-          var zdt = instant.atZone(calendar.getTimeZone().toZoneId());
-          return new Date(zdt.toInstant().toEpochMilli());
+          var instant = Instant.parse(value); // Handles ISO 8601 with UTC (Z) - absolute, no TZ needed
+          return new Date(instant.toEpochMilli());
         } catch (DateTimeParseException e) {
           // Fallback to ISO local date (e.g., "2023-10-15")
           var localDate = LocalDate.parse(value, DateTimeFormatter.ISO_LOCAL_DATE);
-          var calendar = cal != null ? cal : Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+          var calendar = cal != null ? cal : Calendar.getInstance();
           var zdt = localDate.atStartOfDay(calendar.getTimeZone().toZoneId());
           return new Date(zdt.toInstant().toEpochMilli());
         }
@@ -312,19 +310,21 @@ public class L4Jdbc {
 
   public static Timestamp castTimestamp(Object raw, int columnIndex, int sourceJdbcType, Calendar cal) throws SQLException {
     if (raw instanceof Timestamp) {
-      return (Timestamp) raw;
+      var utcTs = L4Utc.utcDateTimeOf((Timestamp) raw);
+      var ms = utcTs.toInstant(ZoneOffset.UTC).toEpochMilli();
+      return new Timestamp(ms);
     }
     var value = raw.toString();
     if (anyOf(sourceJdbcType, VARCHAR, TIMESTAMP, DATE)) {
       try {
         // Try parsing as ISO timestamp (e.g., "2023-10-15T14:30:00Z")
         try {
-          var instant = Instant.parse(value);
+          var instant = Instant.parse(value); // Handles ISO 8601 with UTC (Z) - absolute, no TZ needed
           return new Timestamp(instant.toEpochMilli());
         } catch (DateTimeParseException e) {
           // Fallback to ISO local date-time (e.g., "2023-10-15 14:30:00")
           var localDateTime = LocalDateTime.parse(value, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-          var calendar = cal != null ? cal : Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+          var calendar = cal != null ? cal : Calendar.getInstance();
           var zdt = localDateTime.atZone(calendar.getTimeZone().toZoneId());
           return new Timestamp(zdt.toInstant().toEpochMilli());
         }
@@ -400,6 +400,9 @@ public class L4Jdbc {
     return type.cast(result);
   }
 
+  /**
+   * Used for resultset getXXX methods.
+   */
   public static Object convertValue(String value, int sourceJdbcType, int targetJdbcType,
                                     int columnIndex, int scale, Calendar cal, Class<?> type) throws SQLException {
     try {
@@ -441,6 +444,9 @@ public class L4Jdbc {
     }
   }
 
+  /**
+   * Used for resultset setXXX methods.
+   */
   public static Object convertParameter(Object x, int targetSqlType) throws SQLException {
     if (x == null) {
       return null;
@@ -460,9 +466,9 @@ public class L4Jdbc {
         case NVARCHAR:
         case CLOB:
         case NCLOB:     return x.toString();
-        case DATE:      return castDate(x.toString(), 1, DATE, null).toString();
-        case TIME:      return castTime(x.toString(), 1, TIME, null).toString();
-        case TIMESTAMP: return castTimestamp(x, 1, TIMESTAMP, null).toString();
+        case DATE:      return L4Utc.utcOf(castDate(x.toString(), 1, DATE, null)).toString();
+        case TIME:      return L4Utc.utcOf(castTime(x.toString(), 1, TIME, null)).toString();
+        case TIMESTAMP: return L4Utc.utcFmtOf(castTimestamp(x, 1, TIMESTAMP, null));
         case DATALINK:  return castURL(x.toString(), 1, DATALINK).toString();
         case BLOB:
           if (x instanceof byte[]) {
