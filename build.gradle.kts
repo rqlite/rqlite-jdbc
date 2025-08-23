@@ -9,7 +9,7 @@ configure<io.vacco.oss.gitflow.GsPluginProfileExtension> {
 }
 
 dependencies {
-  testImplementation("io.vacco.metolithe:mt-codegen:3.0.0")
+  testImplementation("io.vacco.metolithe:mt-codegen:3.7.1")
   testImplementation("io.vacco.shax:shax:2.0.16.0.4.3")
   testImplementation("com.zaxxer:HikariCP:6.3.0")
 }
