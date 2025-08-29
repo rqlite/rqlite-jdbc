@@ -33,7 +33,7 @@ Connect to an `rqlite` instance and execute queries using standard JDBC APIs.
 ```
 import java.sql.*;
 
-var url = "jdbc:sqlite:http://localhost:4001";
+var url = "jdbc:rqlite:http://localhost:4001";
 
 try (Connection conn = DriverManager.getConnection(url)) {
     var stmt = conn.createStatement();
@@ -103,7 +103,7 @@ These options come from `rqlite`'s [Developer Guide](https://rqlite.io/docs/api)
 Example JDBC URL:
 
 ```java
-String url = "jdbc:sqlite:http://localhost:4001?timeoutSec=5&level=strong&freshnessSec=1";
+String url = "jdbc:rqlite:http://localhost:4001?timeoutSec=5&level=strong&freshnessSec=1";
 ```
 
 ## Caveats
