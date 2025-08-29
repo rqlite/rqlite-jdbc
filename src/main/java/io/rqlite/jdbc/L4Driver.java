@@ -18,7 +18,7 @@ import static java.lang.String.format;
 
 public class L4Driver implements Driver {
 
-  private static final String JDBC_URL_PREFIX = "jdbc:sqlite:";
+  private static final String JDBC_URL_PREFIX = "jdbc:rqlite:";
   private static final Logger log = Logger.getLogger(L4Driver.class.getName());
 
   static {
@@ -33,7 +33,13 @@ public class L4Driver implements Driver {
     if (url == null) {
       return false;
     }
-    return url.toLowerCase().startsWith(JDBC_URL_PREFIX);
+    // New recommended prefix
+    if (url.startsWith(JDBC_URL_PREFIX)) {
+      return true;
+    }
+    // Old deprecated prefix, but only for rqlite-style (http) URLs
+    // TODO remove in a couple of releases
+    return url.startsWith("jdbc:sqlite:http");
   }
 
   public Map<String, String> getQueryParams(String url) throws SQLException {

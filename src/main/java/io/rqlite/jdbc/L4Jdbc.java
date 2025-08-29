@@ -487,6 +487,9 @@ public class L4Jdbc {
     if (rqliteType == null) {
       throw new IllegalArgumentException("type cannot be null");
     }
+    if (rqliteType.isEmpty()) {
+      return NULL; // SELECT NULL AS TABLE_CAT, etc...
+    }
     var parts = rqliteType.trim().toUpperCase().split("[(),]");
     var rqType = parts[0];
     switch (rqType) {
