@@ -30,13 +30,16 @@ public class L4ExposedTest {
         Database.Companion.registerJdbcDriver("jdbc:rqlite", "io.rqlite.jdbc.L4Driver", SQLiteDialect.Companion.getDialectName());
         Database.Companion.registerDialect(SQLiteDialect.Companion.getDialectName(), SQLiteDialect::new);
 
-        var dba = ServiceLoader
-          .load(DatabaseConnectionAutoRegistration.class, Database.class.getClassLoader())
-          .findFirst().orElseThrow();
         Database.Companion.connect(
           "jdbc:rqlite:http://localhost:4001", "io.rqlite.jdbc.L4Driver",
-          "", "", conn -> null, null, dba,
-          db -> new ThreadLocalTransactionManager(db, (conn, ti) -> null)
+          "", "", conn -> null, null,
+          ServiceLoader
+            .load(DatabaseConnectionAutoRegistration.class, Database.class.getClassLoader())
+            .findFirst().orElseThrow(),
+          db -> new ThreadLocalTransactionManager(db, (conn, ti) -> {
+            conn.setAutoCommit(false);
+            return null;
+          })
         );
 
         var users = new UsersKt();
