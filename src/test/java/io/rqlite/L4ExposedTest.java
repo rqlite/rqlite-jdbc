@@ -16,7 +16,7 @@ import static j8spec.J8Spec.it;
 @RunWith(J8SpecRunner.class)
 public class L4ExposedTest {
 
-  public static class Users extends Table {
+  public static class UsersKt extends Table {
     public final Column<Integer> id = integer("id", null);
     public final Column<String> name = varchar("name", 50, null);
   }
@@ -39,10 +39,10 @@ public class L4ExposedTest {
           db -> new ThreadLocalTransactionManager(db, (conn, ti) -> null)
         );
 
-        var users = new Users();
+        var users = new UsersKt();
 
         ThreadLocalTransactionManagerKt.transaction(null, tx -> {
-          SchemaUtils.INSTANCE.create(new Users [] { users }, false);
+          SchemaUtils.INSTANCE.create(new UsersKt[] { users }, false);
           QueriesKt.insert(users, (p0, insert) -> {
             insert.set(users.id, 0);
             insert.set(users.name, "Alice");
