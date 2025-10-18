@@ -33,13 +33,7 @@ public class L4Driver implements Driver {
     if (url == null) {
       return false;
     }
-    // New recommended prefix
-    if (url.startsWith(JDBC_URL_PREFIX)) {
-      return true;
-    }
-    // Old deprecated prefix, but only for rqlite-style (http) URLs
-    // TODO remove in a couple of releases
-    return url.startsWith("jdbc:sqlite:http");
+    return url.startsWith(JDBC_URL_PREFIX);
   }
 
   public Map<String, String> getQueryParams(String url) throws SQLException {

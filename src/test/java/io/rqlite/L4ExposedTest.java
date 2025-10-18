@@ -4,15 +4,12 @@ import io.rqlite.jdbc.L4DbMeta;
 import j8spec.annotation.DefinedOrder;
 import j8spec.junit.J8SpecRunner;
 import org.jetbrains.exposed.sql.*;
+import org.jetbrains.exposed.sql.transactions.ThreadLocalTransactionManager;
 import org.jetbrains.exposed.sql.transactions.ThreadLocalTransactionManagerKt;
 import org.jetbrains.exposed.sql.vendors.SQLiteDialect;
 import org.junit.runner.RunWith;
+import java.util.ServiceLoader;
 
-import org.jetbrains.exposed.sql.transactions.TransactionManager;
-
-import java.util.function.Function;
-
-import static org.jetbrains.exposed.sql.StdOutSqlLogger.INSTANCE;
 import static j8spec.J8Spec.it;
 
 @DefinedOrder
@@ -33,41 +30,63 @@ public class L4ExposedTest {
         Database.Companion.registerJdbcDriver("jdbc:rqlite", "io.rqlite.jdbc.L4Driver", SQLiteDialect.Companion.getDialectName());
         Database.Companion.registerDialect(SQLiteDialect.Companion.getDialectName(), SQLiteDialect::new);
 
-        //  public final fun connect(user: kotlin.String = COMPILED_CODE, password: kotlin.String = COMPILED_CODE, setupConnection: (java.sql.Connection) -> kotlin.Unit = COMPILED_CODE, databaseConfig: org.jetbrains.exposed.sql.DatabaseConfig? = COMPILED_CODE, connectionAutoRegistration: org.jetbrains.exposed.sql.DatabaseConnectionAutoRegistration = COMPILED_CODE, manager: (org.jetbrains.exposed.sql.Database) -> org.jetbrains.exposed.sql.transactions.TransactionManager = COMPILED_CODE): org.jetbrains.exposed.sql.Database { /* compiled code */ }
-        Database.Companion.connect("jdbc:rqlite:http://localhost:4001", "io.rqlite.jdbc.L4Driver", "", "", conn -> null, null, , null);
+        var dba = ServiceLoader
+          .load(DatabaseConnectionAutoRegistration.class, Database.class.getClassLoader())
+          .findFirst().orElseThrow();
+        Database.Companion.connect(
+          "jdbc:rqlite:http://localhost:4001", "io.rqlite.jdbc.L4Driver",
+          "", "", conn -> null, null, dba,
+          db -> new ThreadLocalTransactionManager(db, (conn, ti) -> null)
+        );
 
         var users = new Users();
 
         ThreadLocalTransactionManagerKt.transaction(null, tx -> {
-          SchemaUtils.INSTANCE.create(new Users [] {}, true);
-          /*
-          QueriesKt.insert()
-          users.insert(insert -> {
+          SchemaUtils.INSTANCE.create(new Users [] { users }, false);
+          QueriesKt.insert(users, (p0, insert) -> {
             insert.set(users.id, 0);
             insert.set(users.name, "Alice");
+            return null;
           });
-          users.insert(insert -> {
+          QueriesKt.insert(users, (p0, insert) -> {
             insert.set(users.id, 1);
-            insert.set(users.name, "Bob");
+            insert.set(users.name, "bob");
+            return null;
           });
-          */
           return null;
         });
-
-        /*
-        transaction(() -> {
-          addLogger(INSTANCE);
-
+        ThreadLocalTransactionManagerKt.transaction(null, tx -> {
+          QueriesKt.selectAll(users).forEach(System.out::println);
+          return null;
         });
-
-        transaction(() -> {
-          addLogger(INSTANCE);
-          users.selectAll().forEach(row -> {
-            System.out.println(row);
-          });
-        });
-         */
       });
+
+      // Kotlin reference
+      /*
+      object Users : Table() {
+        val id = integer("id")
+        val name = varchar("name", 50)
+      }
+
+      fun main() {
+        L4Tests.initLogging()
+        L4DbMeta.setDriverName("SQLite JDBC")
+        Database.registerJdbcDriver("jdbc:rqlite", "io.rqlite.jdbc.L4Driver", SQLiteDialect.dialectName)
+        Database.registerDialect(SQLiteDialect.dialectName) { SQLiteDialect() }
+        Database.connect(url = "jdbc:rqlite:http://localhost:4001", driver = "io.rqlite.jdbc.L4Driver")
+        transaction {
+          addLogger(StdOutSqlLogger)
+          SchemaUtils.create(Users)
+          Users.insert { it[id] = 0; it[name] = "Alice" }
+          Users.insert { it[id] = 1; it[name] = "Bob"   }
+        }
+        transaction {
+          addLogger(StdOutSqlLogger)
+          Users.selectAll().forEach {
+            println(it)
+          }
+        }
+      } */
     }
   }
 }

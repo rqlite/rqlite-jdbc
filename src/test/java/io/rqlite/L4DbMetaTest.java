@@ -130,9 +130,10 @@ public class L4DbMetaTest {
         assertTrue(meta.getDatabaseProductVersion().matches("\\d+\\.\\d+\\.\\d+"));
         assertEquals(4, meta.getJDBCMajorVersion());
         assertEquals(0, meta.getJDBCMinorVersion());
-        assertEquals("rqlite", meta.getDriverName());
-        assertTrue(meta.getDriverVersion().startsWith("8."));
-        assertEquals(8, meta.getDriverMajorVersion());
+        L4DbMeta.setDriverName(L4DbMeta.DriverName);
+        assertEquals(L4DbMeta.DriverName, meta.getDriverName());
+        assertTrue(meta.getDriverVersion().startsWith("9."));
+        assertEquals(9, meta.getDriverMajorVersion());
         assertTrue(meta.getDriverMinorVersion() != -1);
         assertEquals(DatabaseMetaData.sqlStateSQL, meta.getSQLStateType());
       });
