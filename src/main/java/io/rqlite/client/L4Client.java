@@ -40,9 +40,9 @@ public class L4Client implements Closeable {
   }
 
   private HttpResponse<String> doPostRequest(String url, String body) {
+    var statusCode = -1;
     try {
-      L4Log.trace(url);
-      L4Log.debug("{} - POST {}", this, body);
+      L4Log.trace("{} - POST {}", this, body);
       var builder = HttpRequest.newBuilder().uri(URI.create(url));
       if (L4Options.timeoutSec > 0) {
         builder.timeout(Duration.ofSeconds(L4Options.timeoutSec));
@@ -51,9 +51,11 @@ public class L4Client implements Closeable {
       builder.header("Content-Type", "application/json");
       addBasicAuth(builder);
       var req = builder.build();
-      return checkResponse(httpClient.send(req, HttpResponse.BodyHandlers.ofString()));
+      var res = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+      statusCode = res.statusCode();
+      return checkResponse(res);
     } catch (Exception e) {
-      throw new IllegalStateException(format("HTTP POST error: [%s]", url), e);
+      throw new IllegalStateException(format("HTTP POST error: (%d) [%s]", statusCode, url), e);
     }
   }
 
@@ -62,6 +64,7 @@ public class L4Client implements Closeable {
   }
 
   private HttpResponse<String> doGetRequest(String url) {
+    var statusCode = -1;
     try {
       var builder = HttpRequest.newBuilder().uri(URI.create(url)).GET();
       addBasicAuth(builder);
@@ -69,9 +72,10 @@ public class L4Client implements Closeable {
         builder.timeout(Duration.ofSeconds(L4Options.timeoutSec));
       }
       var req = builder.build();
-      return checkResponse(httpClient.send(req, HttpResponse.BodyHandlers.ofString()));
+      var res = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+      return checkResponse(res);
     } catch (Exception e) {
-      throw new IllegalStateException(format("HTTP GET error: [%s]", url), e);
+      throw new IllegalStateException(format("HTTP GET error: (%d) [%s]", statusCode, url), e);
     }
   }
 
