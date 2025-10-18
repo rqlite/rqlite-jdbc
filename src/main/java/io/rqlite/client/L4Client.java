@@ -42,6 +42,7 @@ public class L4Client implements Closeable {
   private HttpResponse<String> doPostRequest(String url, String body) {
     var statusCode = -1;
     try {
+      L4Log.trace(url);
       L4Log.trace("{} - POST {}", this, body);
       var builder = HttpRequest.newBuilder().uri(URI.create(url));
       if (L4Options.timeoutSec > 0) {

@@ -30,21 +30,39 @@ public class L4Options {
     return String.format("%s=%s", key, value.toString());
   }
 
+  public static String[] filterNulls(String[] input) {
+    if (input == null) {
+      return new String[0];
+    }
+    int nonNullCount = 0;
+    for (var s : input) {
+      if (s != null) {
+        nonNullCount++;
+      }
+    }
+    var result = new String[nonNullCount];
+    int index = 0;
+    for (var s : input) {
+      if (s != null) {
+        result[index++] = s;
+      }
+    }
+    return result;
+  }
+
   public static String queryParams(boolean transaction) {
     var pairs = new String[] {
-      transaction ? kv("transaction", true) : "",
+      queue ? kv("queue", true) : null,
+      transaction ? kv("transaction", true) : null,
       kv("timings", true),
       kv("timeout", format("%ds", timeoutSec)),
-      queue ? kv("queue", queue) : "",
       kv("wait", wait),
       kv("level", level),
-      level == L4Level.linearizable
-        ? kv("linearizable_timeout", format("%ds", linearizableTimeoutSec))
-        : "",
+      level == L4Level.linearizable ? kv("linearizable_timeout", format("%ds", linearizableTimeoutSec)) : null,
       kv("freshness", format("%ds", freshnessSec)),
       kv("freshness_strict", freshnessStrict)
     };
-    var params = String.join("&", pairs);
+    var params = String.join("&", filterNulls(pairs));
     return String.format("?%s", params);
   }
 
