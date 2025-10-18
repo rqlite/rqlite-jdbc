@@ -4,7 +4,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     container: docker.io/library/gradle:8-jdk21
-    services: { rqlite: { image: rqlite/rqlite:8.42.0, ports: [ 4001:4001 ] } }
+    services: { rqlite: { image: rqlite/rqlite:9.1.2, ports: [ 4001:4001 ] } }
     env:
       RQLITE_URL: http://rqlite:4001
       PLUGIN_ORGCONFIG: https://raw.githubusercontent.com/rqlite/rqlite-jdbc/refs/heads/org-config/org-config.json
@@ -15,7 +15,7 @@ jobs:
       - name: Test results
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
-        with: { name: test-results, path: build/test-results/test }
+        with: { name: test-results, path: build/reports/tests/test }
       - name: Coverage report
         uses: actions/upload-artifact@v4
         with: { name: coverage-report, path: build/reports/jacoco/test/html }
