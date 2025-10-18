@@ -31,7 +31,7 @@ public class L4ExposedTest {
         Database.Companion.registerDialect(SQLiteDialect.Companion.getDialectName(), SQLiteDialect::new);
 
         Database.Companion.connect(
-          "jdbc:rqlite:http://localhost:4001", "io.rqlite.jdbc.L4Driver",
+          L4Tests.rqUrl, "io.rqlite.jdbc.L4Driver",
           "", "", conn -> null, null,
           ServiceLoader
             .load(DatabaseConnectionAutoRegistration.class, Database.class.getClassLoader())
