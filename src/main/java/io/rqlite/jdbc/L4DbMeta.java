@@ -12,7 +12,9 @@ import static io.rqlite.jdbc.L4Jdbc.*;
 
 public class L4DbMeta implements DatabaseMetaData {
 
-  private final L4Client client;
+  private static String DriverName = "rqlite";
+
+  private final L4Client  client;
   private final L4Conn    conn;
   private String          sqliteVersion;
 
@@ -87,7 +89,11 @@ public class L4DbMeta implements DatabaseMetaData {
   }
 
   @Override public String getDriverName() {
-    return "rqlite";
+    return DriverName;
+  }
+
+  public static void setDriverName(String driverNameOverride) {
+    DriverName = driverNameOverride;
   }
 
   @Override public String getDriverVersion() {

@@ -82,7 +82,7 @@ public class L4Options {
         L4Options.user = get(p, kUser);
       }
       if (p.containsKey(kPassword)) {
-        L4Options.password = get(p, password);
+        L4Options.password = get(p, kPassword);
       }
       if (p.containsKey(kCaCert)) {
         L4Options.cacert = get(p, kCaCert);

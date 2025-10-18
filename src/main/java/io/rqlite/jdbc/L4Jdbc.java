@@ -30,6 +30,7 @@ public class L4Jdbc {
   public static final int NCHARACTER_STREAM = Types.NVARCHAR  + 1000;
 
   // constants for rqlite types
+  public static final String RQ_INT       = "INT";
   public static final String RQ_INTEGER   = "INTEGER";
   public static final String RQ_NUMERIC   = "NUMERIC";
   public static final String RQ_BOOLEAN   = "BOOLEAN";
@@ -493,6 +494,7 @@ public class L4Jdbc {
     var parts = rqliteType.trim().toUpperCase().split("[(),]");
     var rqType = parts[0];
     switch (rqType) {
+      case RQ_INT:
       case RQ_INTEGER:    return INTEGER;
       case RQ_NUMERIC:    return NUMERIC;
       case RQ_BOOLEAN:    return BOOLEAN;
