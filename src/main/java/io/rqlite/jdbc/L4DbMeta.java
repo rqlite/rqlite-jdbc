@@ -94,7 +94,6 @@ public class L4DbMeta implements DatabaseMetaData {
 
   /**
    * Sets a custom driver name to override the default value reported by {@link #getDriverName()}.
-   * <p />
    * This method is provided for compatibility with certain ORM frameworks or libraries that
    * perform strict checks on the reported database product name (e.g., expecting "SQLite JDBC"
    * for SQLite-compatible drivers). Use this to specify an alternative name if needed for
