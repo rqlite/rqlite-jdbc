@@ -45,7 +45,7 @@ public class L4DriverTest {
         new MtDaoMapper().mapSchema(daoDir, pkg, Fmt, schema);
       });
 
-      it("Applies Liquibase changesets",  () -> {
+      it("Applies Database changesets",  () -> {
         var ctx = "integration-test";
         var tables = new MtMapper().build(Fmt, schema);
         var changes = new MtLogMapper(L4Db.Main).process(tables, MtLevel.TABLE_COMPACT);

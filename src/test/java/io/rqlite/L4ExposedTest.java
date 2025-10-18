@@ -30,6 +30,8 @@ public class L4ExposedTest {
         Database.Companion.registerJdbcDriver("jdbc:rqlite", "io.rqlite.jdbc.L4Driver", SQLiteDialect.Companion.getDialectName());
         Database.Companion.registerDialect(SQLiteDialect.Companion.getDialectName(), SQLiteDialect::new);
 
+        Thread.sleep(5000L);
+
         var dba = ServiceLoader
           .load(DatabaseConnectionAutoRegistration.class, Database.class.getClassLoader())
           .findFirst().orElseThrow();
