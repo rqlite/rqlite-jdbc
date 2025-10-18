@@ -126,6 +126,16 @@ To execute multiple SQL statements as a transaction, you have two options.
 
 Populate a JDBC batch using [`Statement`](https://docs.oracle.com/en/java/javase/11/docs/api/java.sql/java/sql/Statement.html#addBatch(java.lang.String)) or [`PreparedStatement`](https://docs.oracle.com/en/java/javase/11/docs/api/java.sql/java/sql/PreparedStatement.html#addBatch()), which will get sent with `transaction=true` to the underlying `rqlite` HTTP request.
 
+#### Framework Compatibility
+
+Certain ORM frameworks (e.g., JetBrains Exposed) may require specific driver metadata for compatibility.
+
+If you encounter issues with the reported database product name, use `L4DbMeta.setDriverName("SQLite JDBC")` to override the default value before connecting.
+
+This can help align the driver with framework expectations for SQLite-like dialects.
+
+See also: [L4ExposedTest](./src/test/java/io/rqlite/L4ExposedTest.java)
+
 #### Synthetic/deferred transactions
 
 Call `setAutoCommit(false)` on a [`Connection`](https://docs.oracle.com/en/java/javase/11/docs/api/java.sql/java/sql/Connection.html#setAutoCommit(boolean)), and run `insert`, `update` or `delete` statements.

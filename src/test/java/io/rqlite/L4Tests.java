@@ -32,6 +32,8 @@ public class L4Tests {
   }
 
   public static final String RQLITE_URL = System.getenv("RQLITE_URL") == null ? "http://localhost:4001" : System.getenv("RQLITE_URL");
+  public static final String rqUrl = String.format("jdbc:rqlite:%s", L4Tests.RQLITE_URL);
+
   public static final boolean runIntegrationTests = !GraphicsEnvironment.isHeadless() || System.getenv("RQLITE_URL") != null;
 
   public static L4Client localClient() {

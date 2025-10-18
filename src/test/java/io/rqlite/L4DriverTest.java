@@ -28,7 +28,6 @@ public class L4DriverTest {
     User.class, Device.class, Location.class
   };
 
-  public static final String        rqUrl = String.format("jdbc:rqlite:%s", L4Tests.RQLITE_URL);
   public static final L4Client      rq = L4Tests.localClient();
   public static final MtCaseFormat  Fmt = MtCaseFormat.KEEP_CASE;
 
@@ -37,7 +36,7 @@ public class L4DriverTest {
       L4Tests.initLogging();
 
       var hkConfig = new HikariConfig();
-      hkConfig.setJdbcUrl(rqUrl);
+      hkConfig.setJdbcUrl(L4Tests.rqUrl);
       var ds = new HikariDataSource(hkConfig);
 
       it("Generates schema DAOs", () -> {
@@ -46,7 +45,7 @@ public class L4DriverTest {
         new MtDaoMapper().mapSchema(daoDir, pkg, Fmt, schema);
       });
 
-      it("Applies Liquibase changesets",  () -> {
+      it("Applies Database changesets",  () -> {
         var ctx = "integration-test";
         var tables = new MtMapper().build(Fmt, schema);
         var changes = new MtLogMapper(L4Db.Main).process(tables, MtLevel.TABLE_COMPACT);
@@ -59,7 +58,7 @@ public class L4DriverTest {
             .withAutoCommit(true)
             .applyChanges(changes, ctx);
         }
-        var props = DriverManager.getDriver(rqUrl).getPropertyInfo(null, null);
+        var props = DriverManager.getDriver(L4Tests.rqUrl).getPropertyInfo(null, null);
         for (var prop : props) {
           L4Log.info("{} ({})", prop.description, prop.required);
         }
@@ -104,7 +103,7 @@ public class L4DriverTest {
         loc.geoHash8 = "9q4gu1y4";
         locationDao.upsert(loc);
 
-        try (var conn = DriverManager.getConnection(rqUrl)) {
+        try (var conn = DriverManager.getConnection(L4Tests.rqUrl)) {
           var dbm = conn.getMetaData();
           try (var lol = (L4Rs) dbm.getPrimaryKeys(null, null, "User")) {
             lol.result.print(System.out);
@@ -114,7 +113,7 @@ public class L4DriverTest {
 
       it("Queries table metadata", () -> {
         var tables = new String[] { "User", "Device", "Location" };
-        try (var conn = DriverManager.getConnection(rqUrl)) {
+        try (var conn = DriverManager.getConnection(L4Tests.rqUrl)) {
           for (var table : tables) {
             var idx = (L4Rs) conn.getMetaData().getIndexInfo(null, null, table, true, false);
             var cols = L4Db.dbGetColumns(table, null, rq);

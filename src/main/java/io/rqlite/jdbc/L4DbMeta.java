@@ -12,7 +12,9 @@ import static io.rqlite.jdbc.L4Jdbc.*;
 
 public class L4DbMeta implements DatabaseMetaData {
 
-  private final L4Client client;
+  public static String DriverName = "rqlite";
+
+  private final L4Client  client;
   private final L4Conn    conn;
   private String          sqliteVersion;
 
@@ -87,7 +89,20 @@ public class L4DbMeta implements DatabaseMetaData {
   }
 
   @Override public String getDriverName() {
-    return "rqlite";
+    return DriverName;
+  }
+
+  /**
+   * Sets a custom driver name to override the default value reported by {@link #getDriverName()}.
+   * This method is provided for compatibility with certain ORM frameworks or libraries that
+   * perform strict checks on the reported database product name (e.g., expecting "SQLite JDBC"
+   * for SQLite-compatible drivers). Use this to specify an alternative name if needed for
+   * integration purposes.
+   *
+   * @param driverNameOverride the custom driver name to use
+   */
+  public static void setDriverName(String driverNameOverride) {
+    DriverName = driverNameOverride;
   }
 
   @Override public String getDriverVersion() {
