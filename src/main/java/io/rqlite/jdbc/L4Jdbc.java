@@ -10,7 +10,9 @@ import java.sql.*;
 import java.sql.Date;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoField;
 import java.util.*;
 
 import static io.rqlite.jdbc.L4Err.*;
@@ -324,7 +326,11 @@ public class L4Jdbc {
           return new Timestamp(instant.toEpochMilli());
         } catch (DateTimeParseException e) {
           // Fallback to ISO local date-time (e.g., "2023-10-15 14:30:00")
-          var localDateTime = LocalDateTime.parse(value, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+          DateTimeFormatter formatter = new DateTimeFormatterBuilder()
+                  .appendPattern("yyyy-MM-dd HH:mm:ss")
+                  .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true) // optional .SSS... up to nanoseconds
+                  .toFormatter();
+          var localDateTime = LocalDateTime.parse(value, formatter);
           var calendar = cal != null ? cal : Calendar.getInstance();
           var zdt = localDateTime.atZone(calendar.getTimeZone().toZoneId());
           return new Timestamp(zdt.toInstant().toEpochMilli());
