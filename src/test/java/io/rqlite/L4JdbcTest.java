@@ -283,6 +283,7 @@ public class L4JdbcTest {
         LocalDateTime.of(2023, 10, 15, 14, 30).atZone(ZoneId.of("UTC")).toInstant().toEpochMilli()
       );
       assertEquals(expectedTs, castTimestamp("2023-10-15 14:30:00", colIdx, Types.TIMESTAMP, utcCal));
+      assertEquals(expectedTs, castTimestamp("2023-10-15 14:30:00.000", colIdx, Types.VARCHAR, utcCal));
       assertEquals(expectedTs, castTimestamp("2023-10-15T14:30:00Z", colIdx, Types.VARCHAR, utcCal));
       assertEquals(new Timestamp(1697328000000L), castTimestamp("1697328000", colIdx, Types.INTEGER, utcCal));
       runFail(() -> castTimestamp("invalid-ts", colIdx, Types.TIMESTAMP, utcCal), SqlStateInvalidType);
