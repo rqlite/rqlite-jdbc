@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "io.rqlite"
-version = "9.1.2.0"
+version = "9.1.2.1"
 
 configure<io.vacco.oss.gitflow.GsPluginProfileExtension> {
   addJ8Spec()
