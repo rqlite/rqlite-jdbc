@@ -61,19 +61,23 @@ public class L4Driver implements Driver {
   }
 
   public HttpClient createHttpClient() throws SQLException {
+    return createHttpClient(new L4Options());
+  }
+
+  public HttpClient createHttpClient(L4Options options) throws SQLException {
     try {
-      var isHttps = L4Options.baseUrl.toLowerCase().startsWith("https://");
-      var cacert = L4Options.cacert;
+      var isHttps = options.baseUrl.toLowerCase().startsWith("https://");
+      var cacert = options.cacert;
       if (!isHttps) {
-        return L4Http.defaultHttpClient(L4Options.timeoutSec).build();
-      } else if (L4Options.insecure) {
-        return L4Http.newTLSSClientInsecure(L4Options.timeoutSec).build();
+        return L4Http.defaultHttpClient(options.timeoutSec).build();
+      } else if (options.insecure) {
+        return L4Http.newTLSSClientInsecure(options.timeoutSec).build();
       } else if (cacert != null && !cacert.isEmpty()) {
-        return L4Http.newTLSSClient(cacert, L4Options.timeoutSec).build();
+        return L4Http.newTLSSClient(cacert, options.timeoutSec).build();
       } else {
         return HttpClient.newBuilder()
           .sslContext(SSLContext.getDefault())
-          .connectTimeout(Duration.ofSeconds(L4Options.timeoutSec))
+          .connectTimeout(Duration.ofSeconds(options.timeoutSec))
           .build();
       }
     } catch (Exception e) {
@@ -82,12 +86,14 @@ public class L4Driver implements Driver {
   }
 
   public L4Client createL4Client(HttpClient httpClient) throws SQLException {
+    return createL4Client(new L4Options(), httpClient);
+  }
+
+  public L4Client createL4Client(L4Options options, HttpClient httpClient) throws SQLException {
     try {
-      var user = L4Options.user;
-      var password = L4Options.password;
-      var client = new L4Client(L4Options.baseUrl, httpClient);
-      if (user != null && password != null) {
-        return client.withBasicAuth(user, password);
+      var client = new L4Client(options.baseUrl, httpClient, options);
+      if (options.user != null && options.password != null) {
+        return client.withBasicAuth(options.user, options.password);
       }
       return client;
     } catch (Exception e) {
@@ -109,9 +115,9 @@ public class L4Driver implements Driver {
       return null;
     }
     try {
-      L4Options.update(mergeProperties(info, getQueryParams(url)));
-      var httpClient = createHttpClient();
-      var client = createL4Client(httpClient);
+      var options = new L4Options(mergeProperties(info, getQueryParams(url)));
+      var httpClient = createHttpClient(options);
+      var client = createL4Client(options, httpClient);
       return new L4Conn(client);
     } catch (Exception e) {
       throw badState("Failed to establish connection", e);
@@ -120,6 +126,7 @@ public class L4Driver implements Driver {
 
   @Override public DriverPropertyInfo[] getPropertyInfo(String url, Properties info) {
     var mergedProps = mergeProperties(info, new HashMap<>());
+    var defaults = new L4Options();
     var props = new DriverPropertyInfo[10];
 
     props[0] = new DriverPropertyInfo(kUser, mergedProps.getProperty(kUser));
@@ -130,31 +137,31 @@ public class L4Driver implements Driver {
     props[1].description = "Password for rqlite authentication";
     props[1].required = false;
 
-    props[2] = new DriverPropertyInfo(kTimeoutSec, mergedProps.getProperty(kTimeoutSec, String.valueOf(L4Options.timeoutSec)));
+    props[2] = new DriverPropertyInfo(kTimeoutSec, mergedProps.getProperty(kTimeoutSec, String.valueOf(defaults.timeoutSec)));
     props[2].description = "Timeout in seconds";
     props[2].required = false;
 
-    props[3] = new DriverPropertyInfo(kQueue, mergedProps.getProperty(kQueue, String.valueOf(L4Options.queue)));
+    props[3] = new DriverPropertyInfo(kQueue, mergedProps.getProperty(kQueue, String.valueOf(defaults.queue)));
     props[3].description = "Enable queue mode";
     props[3].required = false;
 
-    props[4] = new DriverPropertyInfo(kWait, mergedProps.getProperty(kWait, String.valueOf(L4Options.wait)));
+    props[4] = new DriverPropertyInfo(kWait, mergedProps.getProperty(kWait, String.valueOf(defaults.wait)));
     props[4].description = "Enable wait mode";
     props[4].required = false;
 
-    props[5] = new DriverPropertyInfo(kLevel, mergedProps.getProperty(kLevel, L4Options.level.toString()));
+    props[5] = new DriverPropertyInfo(kLevel, mergedProps.getProperty(kLevel, defaults.level.toString()));
     props[5].description = "Consistency level (none, weak, linearizable)";
     props[5].required = false;
 
-    props[6] = new DriverPropertyInfo(kLinearizableTimeoutSec, mergedProps.getProperty(kLinearizableTimeoutSec, String.valueOf(L4Options.linearizableTimeoutSec)));
+    props[6] = new DriverPropertyInfo(kLinearizableTimeoutSec, mergedProps.getProperty(kLinearizableTimeoutSec, String.valueOf(defaults.linearizableTimeoutSec)));
     props[6].description = "Linearizable timeout in seconds";
     props[6].required = false;
 
-    props[7] = new DriverPropertyInfo(kFreshnessSec, mergedProps.getProperty(kFreshnessSec, String.valueOf(L4Options.freshnessSec)));
+    props[7] = new DriverPropertyInfo(kFreshnessSec, mergedProps.getProperty(kFreshnessSec, String.valueOf(defaults.freshnessSec)));
     props[7].description = "Freshness in seconds";
     props[7].required = false;
 
-    props[8] = new DriverPropertyInfo(kFreshnessStrict, mergedProps.getProperty(kFreshnessStrict, String.valueOf(L4Options.freshnessStrict)));
+    props[8] = new DriverPropertyInfo(kFreshnessStrict, mergedProps.getProperty(kFreshnessStrict, String.valueOf(defaults.freshnessStrict)));
     props[8].description = "Enable strict freshness";
     props[8].required = false;
 

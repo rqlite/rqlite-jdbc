@@ -26,6 +26,8 @@ Install from [Maven Central](https://mvnrepository.com/artifact/io.rqlite/rqlite
 
 The driver version corresponds to the last known `rqlite` [release](https://github.com/rqlite/rqlite/releases) the driver was tested against, followed by a build version of the driver itself.
 
+This driver targets `rqlite` 10 (tested against v10.5.2). It remains compatible with the `rqlite` 9 line, since v10 introduced no breaking HTTP API changes; the CI test matrix exercises both.
+
 ## Basic Usage
 
 Connect to an `rqlite` instance and execute queries using standard JDBC APIs.

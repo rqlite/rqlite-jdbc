@@ -132,8 +132,8 @@ public class L4DbMetaTest {
         assertEquals(0, meta.getJDBCMinorVersion());
         L4DbMeta.setDriverName(L4DbMeta.DriverName);
         assertEquals(L4DbMeta.DriverName, meta.getDriverName());
-        assertTrue(meta.getDriverVersion().startsWith("9."));
-        assertEquals(9, meta.getDriverMajorVersion());
+        assertTrue(meta.getDriverVersion().startsWith("10."));
+        assertEquals(10, meta.getDriverMajorVersion());
         assertTrue(meta.getDriverMinorVersion() != -1);
         assertEquals(DatabaseMetaData.sqlStateSQL, meta.getSQLStateType());
       });

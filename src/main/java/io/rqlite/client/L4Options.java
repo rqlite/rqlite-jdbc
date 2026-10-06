@@ -13,18 +13,24 @@ public class L4Options {
     kFreshnessSec = "freshnessSec", kFreshnessStrict = "freshnessStrict",
     kUser = "user", kPassword = "password";
 
-  public static String  baseUrl, user, password, cacert;
+  public String  baseUrl, user, password, cacert;
 
-  public static boolean insecure;
-  public static boolean queue = false;
-  public static boolean wait = true;
+  public boolean insecure;
+  public boolean queue = false;
+  public boolean wait = true;
 
-  public static L4Level level = L4Level.linearizable;
-  public static long    linearizableTimeoutSec = 5;
-  public static long    timeoutSec = 5;
+  public L4Level level = L4Level.linearizable;
+  public long    linearizableTimeoutSec = 5;
+  public long    timeoutSec = 5;
 
-  public static long    freshnessSec = 5;
-  public static boolean freshnessStrict = false;
+  public long    freshnessSec = 5;
+  public boolean freshnessStrict = false;
+
+  public L4Options() {}
+
+  public L4Options(Properties p) {
+    update(p);
+  }
 
   private static String kv(String key, Object value) {
     return String.format("%s=%s", key, value.toString());
@@ -50,7 +56,7 @@ public class L4Options {
     return result;
   }
 
-  public static String queryParams(boolean transaction) {
+  public String queryParams(boolean transaction) {
     var pairs = new String[] {
       queue ? kv("queue", true) : null,
       transaction ? kv("transaction", true) : null,
@@ -70,43 +76,43 @@ public class L4Options {
     return (String) p.get(k);
   }
 
-  public static void update(Properties p) {
+  public void update(Properties p) {
     try {
       if (p.containsKey(kBaseUrl)) {
-        L4Options.baseUrl = get(p, kBaseUrl);
+        this.baseUrl = get(p, kBaseUrl);
       }
       if (p.containsKey(kTimeoutSec)) {
-        L4Options.timeoutSec = Long.parseLong(get(p, kTimeoutSec));
+        this.timeoutSec = Long.parseLong(get(p, kTimeoutSec));
       }
       if (p.containsKey(kQueue)) {
-        L4Options.queue = Boolean.parseBoolean(get(p, kQueue));
+        this.queue = Boolean.parseBoolean(get(p, kQueue));
       }
       if (p.containsKey(kWait)) {
-        L4Options.wait = Boolean.parseBoolean(get(p, kWait));
+        this.wait = Boolean.parseBoolean(get(p, kWait));
       }
       if (p.containsKey(kLevel)) {
-        L4Options.level = L4Level.valueOf(get(p, kLevel).toLowerCase());
+        this.level = L4Level.valueOf(get(p, kLevel).toLowerCase());
       }
       if (p.containsKey(kLinearizableTimeoutSec)) {
-        L4Options.linearizableTimeoutSec = Long.parseLong(get(p, kLinearizableTimeoutSec));
+        this.linearizableTimeoutSec = Long.parseLong(get(p, kLinearizableTimeoutSec));
       }
       if (p.containsKey(kFreshnessSec)) {
-        L4Options.freshnessSec = Long.parseLong(get(p, kFreshnessSec));
+        this.freshnessSec = Long.parseLong(get(p, kFreshnessSec));
       }
       if (p.containsKey(kFreshnessStrict)) {
-        L4Options.freshnessStrict = Boolean.parseBoolean(get(p, kFreshnessStrict));
+        this.freshnessStrict = Boolean.parseBoolean(get(p, kFreshnessStrict));
       }
       if (p.containsKey(kUser)) {
-        L4Options.user = get(p, kUser);
+        this.user = get(p, kUser);
       }
       if (p.containsKey(kPassword)) {
-        L4Options.password = get(p, kPassword);
+        this.password = get(p, kPassword);
       }
       if (p.containsKey(kCaCert)) {
-        L4Options.cacert = get(p, kCaCert);
+        this.cacert = get(p, kCaCert);
       }
       if (p.containsKey(kInsecure)) {
-        L4Options.insecure = Boolean.parseBoolean(get(p, kInsecure));
+        this.insecure = Boolean.parseBoolean(get(p, kInsecure));
       }
     } catch (Exception e) {
       throw new IllegalStateException(e);

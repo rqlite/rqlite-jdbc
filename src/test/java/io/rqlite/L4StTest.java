@@ -1,7 +1,6 @@
 package io.rqlite;
 
 import io.rqlite.client.L4Client;
-import io.rqlite.client.L4Options;
 import io.rqlite.client.L4Statement;
 import io.rqlite.jdbc.L4St;
 import j8spec.annotation.DefinedOrder;
@@ -248,7 +247,7 @@ public class L4StTest {
         var stmt = new L4St(rq);
 
         // Test default timeout (0, no timeout)
-        assertEquals(L4Options.timeoutSec, stmt.getQueryTimeout());
+        assertEquals(rq.getOptions().timeoutSec, stmt.getQueryTimeout());
         stmt.setQueryTimeout(10);
         assertEquals(10, stmt.getQueryTimeout());
         var rs = stmt.executeQuery("SELECT * FROM st_test_data");

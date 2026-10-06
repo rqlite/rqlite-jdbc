@@ -1,7 +1,6 @@
 package io.rqlite.jdbc;
 
 import io.rqlite.client.L4Client;
-import io.rqlite.client.L4Options;
 import java.sql.*;
 import java.util.*;
 import java.util.concurrent.Executor;
@@ -373,12 +372,12 @@ public class L4Conn implements Connection {
 
   @Override public void setNetworkTimeout(Executor executor, int milliseconds) throws SQLException {
     checkClosed();
-    L4Options.timeoutSec = milliseconds / 1000;
+    client.getOptions().timeoutSec = milliseconds / 1000;
   }
 
   @Override public int getNetworkTimeout() throws SQLException {
     checkClosed();
-    return (int) L4Options.timeoutSec * 1000;
+    return (int) client.getOptions().timeoutSec * 1000;
   }
 
   @Override public <T> T unwrap(Class<T> iface) throws SQLException {

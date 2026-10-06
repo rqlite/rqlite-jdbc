@@ -3,19 +3,23 @@ on: { pull_request: { branches: [master, develop] } }
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rqlite: [ "9.1.2", "10.5.2" ]
     container: docker.io/library/gradle:8-jdk21
-    services: { rqlite: { image: rqlite/rqlite:9.1.2, ports: [ 4001:4001 ] } }
+    services: { rqlite: { image: "rqlite/rqlite:${{ matrix.rqlite }}", ports: [ 4001:4001 ] } }
     env:
       RQLITE_URL: http://rqlite:4001
       PLUGIN_ORGCONFIG: https://raw.githubusercontent.com/rqlite/rqlite-jdbc/refs/heads/org-config/org-config.json
     steps:
       - uses: actions/checkout@v4
-      - name: Build & test
+      - name: Build & test (rqlite ${{ matrix.rqlite }})
         run: gradle clean test jacocoTestReport
       - name: Test results
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
-        with: { name: test-results, path: build/reports/tests/test }
+        with: { name: "test-results-${{ matrix.rqlite }}", path: build/reports/tests/test }
       - name: Coverage report
         uses: actions/upload-artifact@v4
-        with: { name: coverage-report, path: build/reports/jacoco/test/html }
+        with: { name: "coverage-report-${{ matrix.rqlite }}", path: build/reports/jacoco/test/html }

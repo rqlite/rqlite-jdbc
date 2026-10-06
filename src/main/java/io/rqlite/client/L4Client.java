@@ -22,13 +22,19 @@ public class L4Client implements Closeable {
   private final String statusURL;
   private final String nodesURL;
   private final String readyURL;
+  private final L4Options options;
 
   public  String basicAuthUser = "";
   private String basicAuthPass = "";
   private List<L4Response> buffer;
 
   public L4Client(String baseURL, HttpClient client) {
+    this(baseURL, client, new L4Options());
+  }
+
+  public L4Client(String baseURL, HttpClient client, L4Options options) {
     this.baseUrl = Objects.requireNonNull(baseURL);
+    this.options = Objects.requireNonNull(options);
     this.executeURL = baseURL + "/db/execute";
     this.queryURL = baseURL + "/db/query";
     this.statusURL = baseURL + "/status";
@@ -36,7 +42,7 @@ public class L4Client implements Closeable {
     this.readyURL = baseURL + "/readyz";
     this.httpClient = client != null
       ? client
-      : L4Http.defaultHttpClient(L4Options.timeoutSec).build();
+      : L4Http.defaultHttpClient(options.timeoutSec).build();
   }
 
   private HttpResponse<String> doPostRequest(String url, String body) {
@@ -44,8 +50,8 @@ public class L4Client implements Closeable {
     try {
       L4Log.trace("{} - POST {}", this, body);
       var builder = HttpRequest.newBuilder().uri(URI.create(url));
-      if (L4Options.timeoutSec > 0) {
-        builder.timeout(Duration.ofSeconds(L4Options.timeoutSec));
+      if (options.timeoutSec > 0) {
+        builder.timeout(Duration.ofSeconds(options.timeoutSec));
       }
       builder.method("POST", HttpRequest.BodyPublishers.ofString(body));
       builder.header("Content-Type", "application/json");
@@ -68,8 +74,8 @@ public class L4Client implements Closeable {
     try {
       var builder = HttpRequest.newBuilder().uri(URI.create(url)).GET();
       addBasicAuth(builder);
-      if (L4Options.timeoutSec > 0) {
-        builder.timeout(Duration.ofSeconds(L4Options.timeoutSec));
+      if (options.timeoutSec > 0) {
+        builder.timeout(Duration.ofSeconds(options.timeoutSec));
       }
       var req = builder.build();
       var res = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
@@ -105,7 +111,7 @@ public class L4Client implements Closeable {
   }
 
   private L4Response doExecute(boolean transaction, L4Statement ... statements) {
-    var queryParams = L4Options.queryParams(transaction);
+    var queryParams = options.queryParams(transaction);
     var url = executeURL + queryParams;
     var body = L4Statement.toArray(statements).toString();
     var resp = doJSONPostRequest(url, body);
@@ -145,7 +151,7 @@ public class L4Client implements Closeable {
 
   public L4Response query(L4Statement ... statements) {
     var body = L4Statement.toArray(statements).toString();
-    var queryParams = L4Options.queryParams(false);
+    var queryParams = options.queryParams(false);
     var resp = doJSONPostRequest(queryURL + queryParams, body);
     var rb = resp.body();
     var node = Json.parse(rb).asObject();
@@ -177,11 +183,15 @@ public class L4Client implements Closeable {
     if (txTimeoutSec < 0) {
       throw new IllegalArgumentException(format("Invalid timeout [%d]", txTimeoutSec));
     }
-    L4Options.timeoutSec = txTimeoutSec == 0 ? -1 : txTimeoutSec;
+    this.options.timeoutSec = txTimeoutSec == 0 ? -1 : txTimeoutSec;
   }
 
   public long getTxTimeoutSec() {
-    return L4Options.timeoutSec;
+    return this.options.timeoutSec;
+  }
+
+  public L4Options getOptions() {
+    return options;
   }
 
   public String getBaseUrl() {
