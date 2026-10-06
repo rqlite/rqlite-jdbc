@@ -47,23 +47,50 @@ public class L4Client implements Closeable {
       : L4Http.defaultHttpClient(options.timeoutSec).build();
   }
 
+  private static final int MaxRedirects = 3;
+
+  /**
+   * Returns the redirect target if the response is a redirect that should be followed,
+   * or null when the response should be handled as-is.
+   */
+  private String redirectTarget(HttpResponse<String> res, int hop) {
+    if (!options.redirect) {
+      return null;
+    }
+    var code = res.statusCode();
+    if (code != 301 && code != 302 && code != 307 && code != 308) {
+      return null;
+    }
+    if (hop >= MaxRedirects) {
+      throw new IllegalStateException(format("Too many redirects [%d]", hop));
+    }
+    var loc = res.headers().firstValue("Location").orElse(null);
+    return loc == null || loc.isEmpty() ? null : loc;
+  }
+
   private HttpResponse<String> doPostRequest(String url, String body) {
+    var currentUrl = url;
     var statusCode = -1;
     try {
-      L4Log.trace("{} - POST {}", this, body);
-      var builder = HttpRequest.newBuilder().uri(URI.create(url));
-      if (options.timeoutSec > 0) {
-        builder.timeout(Duration.ofSeconds(options.timeoutSec));
+      for (int hop = 0; ; hop++) {
+        L4Log.trace("{} - POST {}", this, body);
+        var builder = HttpRequest.newBuilder().uri(URI.create(currentUrl));
+        if (options.timeoutSec > 0) {
+          builder.timeout(Duration.ofSeconds(options.timeoutSec));
+        }
+        builder.method("POST", HttpRequest.BodyPublishers.ofString(body));
+        builder.header("Content-Type", "application/json");
+        addBasicAuth(builder);
+        var res = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+        statusCode = res.statusCode();
+        var next = redirectTarget(res, hop);
+        if (next == null) {
+          return checkResponse(res);
+        }
+        currentUrl = next;
       }
-      builder.method("POST", HttpRequest.BodyPublishers.ofString(body));
-      builder.header("Content-Type", "application/json");
-      addBasicAuth(builder);
-      var req = builder.build();
-      var res = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
-      statusCode = res.statusCode();
-      return checkResponse(res);
     } catch (Exception e) {
-      throw new IllegalStateException(format("HTTP POST error: (%d) [%s]", statusCode, url), e);
+      throw new IllegalStateException(format("HTTP POST error: (%d) [%s]", statusCode, currentUrl), e);
     }
   }
 
@@ -72,19 +99,25 @@ public class L4Client implements Closeable {
   }
 
   private HttpResponse<String> doGetRequest(String url) {
+    var currentUrl = url;
     var statusCode = -1;
     try {
-      var builder = HttpRequest.newBuilder().uri(URI.create(url)).GET();
-      addBasicAuth(builder);
-      if (options.timeoutSec > 0) {
-        builder.timeout(Duration.ofSeconds(options.timeoutSec));
+      for (int hop = 0; ; hop++) {
+        var builder = HttpRequest.newBuilder().uri(URI.create(currentUrl)).GET();
+        addBasicAuth(builder);
+        if (options.timeoutSec > 0) {
+          builder.timeout(Duration.ofSeconds(options.timeoutSec));
+        }
+        var res = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+        statusCode = res.statusCode();
+        var next = redirectTarget(res, hop);
+        if (next == null) {
+          return checkResponse(res);
+        }
+        currentUrl = next;
       }
-      var req = builder.build();
-      var res = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
-      statusCode = res.statusCode();
-      return checkResponse(res);
     } catch (Exception e) {
-      throw new IllegalStateException(format("HTTP GET error: (%d) [%s]", statusCode, url), e);
+      throw new IllegalStateException(format("HTTP GET error: (%d) [%s]", statusCode, currentUrl), e);
     }
   }
 

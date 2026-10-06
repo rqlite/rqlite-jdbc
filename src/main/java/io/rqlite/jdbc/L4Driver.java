@@ -146,7 +146,7 @@ public class L4Driver implements Driver {
   @Override public DriverPropertyInfo[] getPropertyInfo(String url, Properties info) {
     var mergedProps = mergeProperties(info, new HashMap<>());
     var defaults = new L4Options();
-    var props = new DriverPropertyInfo[10];
+    var props = new DriverPropertyInfo[12];
 
     props[0] = new DriverPropertyInfo(kUser, mergedProps.getProperty(kUser));
     props[0].description = "Username for rqlite authentication";
@@ -187,6 +187,14 @@ public class L4Driver implements Driver {
     props[9] = new DriverPropertyInfo(kCaCert, mergedProps.getProperty(kCaCert));
     props[9].description = "Path to CA certificate for HTTPS connections";
     props[9].required = false;
+
+    props[10] = new DriverPropertyInfo(kRetries, mergedProps.getProperty(kRetries, String.valueOf(defaults.retries)));
+    props[10].description = "Number of request-forwarding retries";
+    props[10].required = false;
+
+    props[11] = new DriverPropertyInfo(kRedirect, mergedProps.getProperty(kRedirect, String.valueOf(defaults.redirect)));
+    props[11].description = "Follow rqlite leader redirects (HTTP 301)";
+    props[11].required = false;
 
     return props;
   }

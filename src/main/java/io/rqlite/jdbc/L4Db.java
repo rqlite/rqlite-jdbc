@@ -88,6 +88,48 @@ public class L4Db {
     return Pattern.compile(regex, Pattern.CASE_INSENSITIVE).matcher(value).matches();
   }
 
+  private static Map<String, List<List<String>>> groupBy(L4Result result, String keyColumn) {
+    var map = new LinkedHashMap<String, List<List<String>>>();
+    result.forEach((i, row) -> {
+      var key = result.get(keyColumn, row);
+      map.computeIfAbsent(key, k -> new ArrayList<>()).add(row);
+    });
+    return map;
+  }
+
+  // All columns of all tables/views in a single query, instead of one PRAGMA per table.
+  private static L4Result dbAllColumns(L4Client client) {
+    return client.querySingle(join("\n", "",
+      "SELECT m.name AS TABLE_NAME, p.*",
+      "FROM sqlite_master m JOIN pragma_table_info(m.name) p",
+      "WHERE m.type IN ('table', 'view')",
+      "ORDER BY m.name, p.cid"
+    )).first();
+  }
+
+  // All foreign keys of all tables/views in a single query.
+  private static L4Result dbAllForeignKeys(L4Client client) {
+    return client.querySingle(join("\n", "",
+      "SELECT m.name AS TABLE_NAME, fk.*",
+      "FROM sqlite_master m JOIN pragma_foreign_key_list(m.name) fk",
+      "WHERE m.type IN ('table', 'view')",
+      "ORDER BY m.name, fk.id, fk.seq"
+    )).first();
+  }
+
+  // All index key columns of all tables/views in a single query.
+  private static L4Result dbAllIndexColumns(L4Client client) {
+    return client.querySingle(join("\n", "",
+      "SELECT m.name AS TABLE_NAME, il.name AS INDEX_NAME, il.\"unique\" AS IS_UNIQUE,",
+      "       ix.seqno AS SEQNO, ix.cid AS CID, ix.name AS COL_NAME, ix.\"desc\" AS IS_DESC",
+      "FROM sqlite_master m",
+      "JOIN pragma_index_list(m.name) il",
+      "JOIN pragma_index_xinfo(il.name) ix",
+      "WHERE m.type IN ('table', 'view')",
+      "ORDER BY m.name, il.name, ix.seqno"
+    )).first();
+  }
+
   public static L4Result dbGetCatalogs(L4Client client) {
     var res = checkResult(client.querySingle("SELECT * from (SELECT NULL TABLE_CAT) WHERE 1 = 0").first());
     var out = res.setTypes(RQ_VARCHAR);
@@ -166,18 +208,21 @@ public class L4Db {
 
     // Get all tables matching tableNamePattern
     var tables = dbGetTables(tableNamePattern, new String[] {TABLE, VIEW}, client);
+    var allColumns = dbAllColumns(client);
+    var columnsByTable = groupBy(allColumns, TABLE_NAME);
 
     tables.forEach((i, row) -> {
       var tableName = out.get(TABLE_NAME, row);
-      var res0 = client.querySingle(format("PRAGMA table_info('%s')", quote(tableName))).first();
-      res0.forEach((j, row0) -> {
+      var cols = columnsByTable.getOrDefault(tableName, List.of());
+      for (int j = 0; j < cols.size(); j++) {
+        var row0 = cols.get(j);
         var ordinal = j + 1;
-        var colName = res0.get(kName, row0);
+        var colName = allColumns.get(kName, row0);
         if (matchesPattern(colName, columnNamePattern)) {
-          var type = res0.get(kType, row0);
-          var notNull = atoi(res0.get(kNotNull, row0));
-          var defaultValue = res0.get(kDfltValue, row0);
-          var pk = atoi(res0.get(kPk, row0));
+          var type = allColumns.get(kType, row0);
+          var notNull = atoi(allColumns.get(kNotNull, row0));
+          var defaultValue = allColumns.get(kDfltValue, row0);
+          var pk = atoi(allColumns.get(kPk, row0));
           var isAutoIncrement = pk == 1 && type.contains(RQ_INTEGER) && defaultValue == null;
           var sqlType = getJdbcType(type);
           var columnSize = getJdbcTypePrecision(type);
@@ -202,7 +247,7 @@ public class L4Db {
             NO                          // IS_GENERATEDCOLUMN
           );
         }
-      });
+      }
     });
 
     return out;
@@ -219,20 +264,25 @@ public class L4Db {
       RQ_VARCHAR, RQ_INTEGER, RQ_VARCHAR
     );
     var tables = tablePattern.equals(All) ? dbUserTables(client) : List.of(tablePattern);
+    var allColumns = dbAllColumns(client);
+    var columnsByTable = groupBy(allColumns, TABLE_NAME);
     for (var table : tables) {
       var tab = quote(table);
-      var res = client.querySingle(format("PRAGMA table_info('%s')", tab)).first();
-      final var keySeq = new int[] { 1 };
-      res.forEach((i, row) -> {
-        var pk = atoi(res.get(kPk, row));
-        if (pk == 1) {
-          out.addRow(
-            Main, null, tab, res.get(kName, row),
-            itoa(keySeq[0]++), // TODO double check this.
-            format("PK_%s", tab)
-          );
+      var pkCols = new ArrayList<List<String>>();
+      for (var c : columnsByTable.getOrDefault(table, List.of())) {
+        if (atoi(allColumns.get(kPk, c)) > 0) {
+          pkCols.add(c);
         }
-      });
+      }
+      pkCols.sort(Comparator.comparingInt(c -> atoi(allColumns.get(kPk, c))));
+      var keySeq = 1;
+      for (var c : pkCols) {
+        out.addRow(
+          Main, null, tab, allColumns.get(kName, c),
+          itoa(keySeq++),
+          format("PK_%s", tab)
+        );
+      }
     }
     return out;
   }
@@ -251,10 +301,13 @@ public class L4Db {
       RQ_INTEGER, RQ_INTEGER
     );
     var pkRs = dbGetPrimaryKeys(table, client);
+    var colRs = dbGetColumns(table, null, client);
     pkRs.forEach((i, pkr) -> {
       var colName = pkRs.get(COLUMN_NAME, pkr);
-      var colRs = dbGetColumns(table, colName, client);
       colRs.forEach((j, cr) -> {
+        if (!colName.equals(colRs.get(COLUMN_NAME, cr))) {
+          return;
+        }
         var nFlag = colRs.get(NULLABLE, cr);
         var nfi = nFlag != null ? Integer.parseInt(nFlag) : -1;
         if (!nullable || nfi == DatabaseMetaData.columnNoNulls) {
@@ -286,15 +339,16 @@ public class L4Db {
       RQ_VARCHAR, RQ_VARCHAR, RQ_INTEGER
     );
     var tables = tablePattern.equals(All) ? dbUserTables(client) : List.of(tablePattern);
+    var allFks = dbAllForeignKeys(client);
+    var fksByTable = groupBy(allFks, TABLE_NAME);
     for (var table : tables) {
       var fkTable = quote(table);
-      var rs = client.querySingle(format("PRAGMA foreign_key_list('%s')", fkTable)).first();
-      rs.forEach((i, row) -> {
-        var seq = Integer.toString(Integer.parseInt(rs.get(kSeq, row)) + 1);
-        var fkCol = rs.get(kFrom, row);
-        var pkCol = rs.get(kTo, row);
-        var pkTable = rs.get(kTable, row);
-        var onDelete = rs.get(kOnDelete, row);
+      for (var row : fksByTable.getOrDefault(table, List.of())) {
+        var seq = Integer.toString(Integer.parseInt(allFks.get(kSeq, row)) + 1);
+        var fkCol = allFks.get(kFrom, row);
+        var pkCol = allFks.get(kTo, row);
+        var pkTable = allFks.get(kTable, row);
+        var onDelete = allFks.get(kOnDelete, row);
         var updateRule = itoa(DatabaseMetaData.importedKeyNoAction);
         var deleteRule = itoa(
           onDelete != null && onDelete.equals(CASCADE)
@@ -309,7 +363,7 @@ public class L4Db {
           format("PK_%s", pkTable),
           itoa(DatabaseMetaData.importedKeyInitiallyDeferred)
         );
-      });
+      }
     }
     return out;
   }
@@ -329,32 +383,29 @@ public class L4Db {
       RQ_VARCHAR, RQ_VARCHAR, RQ_INTEGER
     );
     // Find all tables with foreign keys referencing this table
-    var tables = dbGetTables(null, new String[] { TABLE }, client);
-    tables.forEach((i, row) -> {
-      var fkTable = quote(tables.get(TABLE_NAME, row));
-      var fkRs = client.querySingle(format("PRAGMA foreign_key_list('%s')", fkTable)).first();
-      fkRs.forEach((j, row0) -> {
-        if (table.equals(fkRs.get(kTable, row0))) {
-          var seq = itoa(atoi(fkRs.get(kSeq, row0)) + 1);
-          var fkCol = fkRs.get(kFrom, row0);
-          var pkCol = fkRs.get(kTo, row0);
-          var onDelete = fkRs.get(kOnDelete, row0);
-          var updateRule = itoa(DatabaseMetaData.importedKeyNoAction);
-          var deleteRule = itoa(
-            onDelete != null && onDelete.equals(CASCADE)
-              ? DatabaseMetaData.importedKeyCascade
-              : DatabaseMetaData.importedKeyNoAction
-          );
-          out.addRow(
-            Main, null, table, pkCol,
-            Main, null, fkTable, fkCol,
-            seq, updateRule, deleteRule,
-            format("FK_%s_%s", fkTable, fkCol),
-            format("PK_%s", table),
-            itoa(DatabaseMetaData.importedKeyInitiallyDeferred)
-          );
-        }
-      });
+    var allFks = dbAllForeignKeys(client);
+    allFks.forEach((i, row0) -> {
+      if (table.equals(allFks.get(kTable, row0))) {
+        var fkTable = quote(allFks.get(TABLE_NAME, row0));
+        var seq = itoa(atoi(allFks.get(kSeq, row0)) + 1);
+        var fkCol = allFks.get(kFrom, row0);
+        var pkCol = allFks.get(kTo, row0);
+        var onDelete = allFks.get(kOnDelete, row0);
+        var updateRule = itoa(DatabaseMetaData.importedKeyNoAction);
+        var deleteRule = itoa(
+          onDelete != null && onDelete.equals(CASCADE)
+            ? DatabaseMetaData.importedKeyCascade
+            : DatabaseMetaData.importedKeyNoAction
+        );
+        out.addRow(
+          Main, null, table, pkCol,
+          Main, null, fkTable, fkCol,
+          seq, updateRule, deleteRule,
+          format("FK_%s_%s", fkTable, fkCol),
+          format("PK_%s", table),
+          itoa(DatabaseMetaData.importedKeyInitiallyDeferred)
+        );
+      }
     });
     return out;
   }
@@ -443,42 +494,47 @@ public class L4Db {
       RQ_BIGINT, RQ_VARCHAR
     );
     var tables = tablePattern.equals(All) ? dbUserTables(client) : List.of(tablePattern);
+    var allColumns = dbAllColumns(client);
+    var columnsByTable = groupBy(allColumns, TABLE_NAME);
+    var allIndexCols = dbAllIndexColumns(client);
+    var indexColsByTable = groupBy(allIndexCols, TABLE_NAME);
     for (var table : tables) {
-      var seq = new int[] { 1 };
-      var ti = client.querySingle(format("PRAGMA table_info('%s')", quote(table))).first();
-      ti.forEach((i, row) -> {
-        var colName = ti.get(kName, row);
-        var isPk = atoi(ti.get(kPk, row)) == 1;
-        if (isPk) {
+      var seq = 1;
+      var pkCols = new ArrayList<List<String>>();
+      for (var c : columnsByTable.getOrDefault(table, List.of())) {
+        if (atoi(allColumns.get(kPk, c)) > 0) {
+          pkCols.add(c);
+        }
+      }
+      pkCols.sort(Comparator.comparingInt(c -> atoi(allColumns.get(kPk, c))));
+      for (var c : pkCols) {
+        out.addRow(
+          Main, null, table,
+          btoa(false), null, format("PK_IDX_%s", table), itoa(DatabaseMetaData.tableIndexOther),
+          itoa(seq++), allColumns.get(kName, c), "A", itoa(0),
+          itoa(0), null
+        );
+      }
+      String currentIndex = null;
+      var currentUnique = false;
+      for (var row0 : indexColsByTable.getOrDefault(table, List.of())) {
+        var indexName = allIndexCols.get("INDEX_NAME", row0);
+        if (!indexName.equals(currentIndex)) {
+          currentIndex = indexName;
+          currentUnique = atoi(allIndexCols.get("IS_UNIQUE", row0)) == 1;
+        }
+        var skip = unique && !currentUnique;
+        if (!skip && atoi(allIndexCols.get("CID", row0)) != -1) {
+          var colName = allIndexCols.get("COL_NAME", row0);
+          var desc = atob(allIndexCols.get("IS_DESC", row0));
           out.addRow(
             Main, null, table,
-            btoa(false), null, format("PK_IDX_%s", table), itoa(DatabaseMetaData.tableIndexOther),
-            itoa(seq[0]++), colName, "A", itoa(0),
+            btoa(!currentUnique), null, indexName, itoa(DatabaseMetaData.tableIndexOther),
+            itoa(seq++), colName, desc ? "D" : "A", itoa(0),
             itoa(0), null
           );
         }
-      });
-      var rs = client.querySingle(format("PRAGMA index_list('%s')", quote(table))).first();
-      rs.forEach((i, row) -> {
-        var indexName = rs.get(kName, row);
-        var isUnique = atoi(rs.get(kUnique, row)) == 1;
-        var iexInfo = client.querySingle(format("PRAGMA index_xinfo('%s')", quote(indexName))).first();
-        iexInfo.forEach((j, row0) -> {
-          var skip = unique && !isUnique;
-          if (!skip && (atoi(iexInfo.get(kCid, row0)) != -1)) {
-            var colName = iexInfo.get(kName, row0);
-            var colSort = new String[1];
-            var desc = atob(iexInfo.get(kDesc, row0));
-            colSort[0] = desc ? "D" : "A";
-            out.addRow(
-              Main, null, table,
-              btoa(!isUnique), null, indexName, itoa(DatabaseMetaData.tableIndexOther),
-              itoa(seq[0]++), colName, colSort[0], itoa(0),
-              itoa(0), null
-            );
-          }
-        });
-      });
+      }
     }
     return out;
   }

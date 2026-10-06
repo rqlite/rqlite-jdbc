@@ -36,6 +36,24 @@ public class L4Json {
     return values;
   }
 
+  private static final char[] HexDigits = "0123456789abcdef".toCharArray();
+
+  /**
+   * Encodes a byte array as a SQLite {@code x'hex'} BLOB literal. rqlite stores this as a
+   * real BLOB (base64 strings are stored as TEXT), and it is more compact than a JSON array
+   * of byte integers.
+   */
+  public static String toHexLiteral(byte[] bytes) {
+    var sb = new StringBuilder(3 + bytes.length * 2);
+    sb.append("x'");
+    for (byte b : bytes) {
+      sb.append(HexDigits[(b >> 4) & 0xF]);
+      sb.append(HexDigits[b & 0xF]);
+    }
+    sb.append('\'');
+    return sb.toString();
+  }
+
   public static JsonValue toJsonValue(Object value) {
     if (value == null) {
       return Json.NULL;
@@ -52,13 +70,7 @@ public class L4Json {
     } else if (value instanceof Boolean) {
       return Json.value((Boolean) value);
     } else if (value instanceof byte[]) {
-      // rqlite expects BLOB parameter values as an array of unsigned byte integers
-      // (or an x'hex' string). Base64 strings are stored as TEXT, not BLOB.
-      var bytes = Json.array();
-      for (byte b : (byte[]) value) {
-        bytes.add(b & 0xFF);
-      }
-      return bytes;
+      return Json.value(toHexLiteral((byte[]) value));
     } else {
       return Json.value(value.toString());
     }

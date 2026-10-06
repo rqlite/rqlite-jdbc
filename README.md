@@ -98,6 +98,8 @@ These options come from `rqlite`'s [Developer Guide](https://rqlite.io/docs/api)
 | `dbTimeoutSec`              | `long`    | `0`                      | Per-statement execution timeout in seconds (rqlite `db_timeout`). `0` means no limit. |
 | `queue`                     | `boolean` | `false`                  | If `true`, enables queuing of writes on the RQLite server.                  |
 | `wait`                      | `boolean` | `true`                   | If `true`, waits for the request to be processed by the RQLite leader.      |
+| `retries`                   | `int`     | `0`                      | Number of rqlite request-forwarding retries.                                |
+| `redirect`                  | `boolean` | `false`                  | If `true`, follow rqlite leader redirects (HTTP 301) transparently.         |
 | `level`                     | `L4Level` | `L4Level.linearizable`   | Consistency level for queries (`none`, `weak`, `strong`, `linearizable`).   |
 | `linearizableTimeoutSec`    | `long`    | `5`                      | Timeout for linearizable consistency queries in seconds.                    |
 | `freshnessSec`              | `long`    | `5`                      | Maximum age of data for freshness-based queries in seconds.                 |
@@ -114,6 +116,10 @@ String url = "jdbc:rqlite:http://localhost:4001?timeoutSec=5&level=strong&freshn
 ### Memory Usage
 
 Result sets are held in memory (mapped from rqlite’s JSON responses to JDBC ResultSet). Write queries that return small datasets to avoid memory issues.
+
+### Metadata Performance
+
+Schema metadata (`getColumns`, `getPrimaryKeys`, `getIndexInfo`, `getImportedKeys`, `getExportedKeys`) is fetched using a constant number of batched `pragma_*` table-valued queries, instead of one round-trip per table or index.
 
 ### Catalog Support
 
@@ -132,7 +138,7 @@ rqlite reports statement errors inside an HTTP 200 response. The driver surfaces
 
 ### BLOB Parameters
 
-`setBytes`, `setBlob`, and binary stream setters send data as a byte array, which rqlite stores as a real `BLOB`. (rqlite treats base64 strings as `TEXT`, so values read back should be accessed via `getBytes`/`getBlob`.)
+`setBytes`, `setBlob`, and binary stream setters send data as a SQLite `x'hex'` literal, which rqlite stores as a real `BLOB`. (rqlite treats base64 strings as `TEXT`, so values read back should be accessed via `getBytes`/`getBlob`.)
 
 ### Transaction Limitations
 

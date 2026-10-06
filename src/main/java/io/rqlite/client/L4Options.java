@@ -11,13 +11,16 @@ public class L4Options {
     kBaseUrl = "baseUrl", kTimeoutSec = "timeoutSec",
     kQueue = "queue", kWait = "wait", kLevel = "level", kLinearizableTimeoutSec = "linearizableTimeoutSec",
     kFreshnessSec = "freshnessSec", kFreshnessStrict = "freshnessStrict",
-    kUser = "user", kPassword = "password", kDbTimeoutSec = "dbTimeoutSec";
+    kUser = "user", kPassword = "password", kDbTimeoutSec = "dbTimeoutSec",
+    kRetries = "retries", kRedirect = "redirect";
 
   public String  baseUrl, user, password, cacert;
 
   public boolean insecure;
   public boolean queue = false;
   public boolean wait = true;
+  public int     retries = 0;
+  public boolean redirect = false;
 
   public L4Level level = L4Level.linearizable;
   public long    linearizableTimeoutSec = 5;
@@ -69,7 +72,9 @@ public class L4Options {
         ? kv("linearizable_timeout", format("%ds", linearizableTimeoutSec)) : null,
       freshnessSec > 0 ? kv("freshness", format("%ds", freshnessSec)) : null,
       freshnessStrict ? kv("freshness_strict", true) : null,
-      dbTimeoutSec > 0 ? kv("db_timeout", format("%ds", dbTimeoutSec)) : null
+      dbTimeoutSec > 0 ? kv("db_timeout", format("%ds", dbTimeoutSec)) : null,
+      retries > 0 ? kv("retries", retries) : null,
+      redirect ? kv("redirect", true) : null
     };
     var params = String.join("&", filterNulls(pairs));
     return String.format("?%s", params);
@@ -107,6 +112,12 @@ public class L4Options {
       }
       if (p.containsKey(kFreshnessStrict)) {
         this.freshnessStrict = Boolean.parseBoolean(get(p, kFreshnessStrict));
+      }
+      if (p.containsKey(kRetries)) {
+        this.retries = Integer.parseInt(get(p, kRetries));
+      }
+      if (p.containsKey(kRedirect)) {
+        this.redirect = Boolean.parseBoolean(get(p, kRedirect));
       }
       if (p.containsKey(kUser)) {
         this.user = get(p, kUser);

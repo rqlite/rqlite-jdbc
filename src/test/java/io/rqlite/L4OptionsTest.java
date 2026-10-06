@@ -42,6 +42,17 @@ public class L4OptionsTest {
       assertEquals(5, c2.getTxTimeoutSec());
     });
 
+    it("Wires retries and redirect into query params", () -> {
+      var o = new L4Options();
+      assertFalse(o.queryParams(false).contains("retries="));
+      assertFalse(o.queryParams(false).contains("redirect="));
+
+      o.retries = 2;
+      o.redirect = true;
+      assertTrue(o.queryParams(false).contains("retries=2"));
+      assertTrue(o.queryParams(false).contains("redirect=true"));
+    });
+
     it("Parses connection properties into a scoped options instance", () -> {
       var p = new Properties();
       p.setProperty(L4Options.kBaseUrl, "http://example:4001");

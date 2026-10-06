@@ -6,7 +6,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        rqlite: [ "9.1.2", "10.5.2" ]
+        rqlite: [ "9.4.5", "10.5.2" ]
     container: docker.io/library/gradle:8-jdk21
     services: { rqlite: { image: "rqlite/rqlite:${{ matrix.rqlite }}", ports: [ 4001:4001 ] } }
     env:
