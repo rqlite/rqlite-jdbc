@@ -71,7 +71,7 @@ public class L4Rs implements ResultSet {
     checkRow(currentRow, result, isClosed);
     checkColumn(columnIndex, result);
     var value = result.values.get(currentRow).get(columnIndex - 1);
-    wasNull = (value == null || value.equals("null"));
+    wasNull = (value == null);
     if (wasNull) {
       return null;
     }

@@ -134,6 +134,23 @@ public class L4JdbcTest {
       assertEquals(Types.INTEGER, getJdbcType("integer")); // Case-insensitive
     });
 
+    it("Normalizes sized types for precision, class and display size", () -> {
+      assertEquals(255, getJdbcTypePrecision("VARCHAR(255)"));
+      assertEquals(38, getJdbcTypePrecision("NUMERIC(10,2)"));
+      assertEquals(255, getJdbcTypePrecision("TEXT"));
+
+      assertEquals(String.class, getJdbcTypeClass("VARCHAR(255)"));
+      assertEquals(Integer.class, getJdbcTypeClass("INT"));
+      assertEquals(Object.class, getJdbcTypeClass(null));
+
+      assertEquals(255, getJdbcTypeColumnDisplaySize("TEXT"));
+      assertEquals(11, getJdbcTypeColumnDisplaySize("INTEGER"));
+
+      assertTrue(getJdbcTypeSigned("BIGINT"));
+      assertFalse(getJdbcTypeSigned("VARCHAR(255)"));
+      assertFalse(getJdbcTypeSigned(null));
+    });
+
     it("Tests L4Jdbc primitive type conversions", () -> {
       int colIdx = 1;
 
@@ -471,8 +488,11 @@ public class L4JdbcTest {
 
       // Test edge cases
       assertTrue(isSelect("SELECT * FROM table -- comment with select"));
-      assertTrue(isSelect("/* SELECT in comment */ INSERT INTO table (a) VALUES (1)"));
+      assertFalse(isSelect("/* SELECT in comment */ INSERT INTO table (a) VALUES (1)"));
       assertTrue(isSelect("SELECT * FROM table WHERE name = 'select'"));
+      assertFalse(isSelect("INSERT INTO table (a) SELECT a FROM table2"));
+      assertTrue(isSelect("PRAGMA table_info('t')"));
+      assertTrue(isSelect("/* leading */ -- comments\n SELECT 1"));
       assertFalse(isSelect(""));
       assertFalse(isSelect("  "));
       assertFalse(isSelect(null));

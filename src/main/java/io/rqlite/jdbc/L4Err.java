@@ -246,9 +246,15 @@ public class L4Err {
   }
 
   public static void checkColumnLabel(String label, L4Result result) throws SQLException {
-    if (label == null || !result.columns.contains(label)) {
+    if (label == null) {
       throw badColumn(label);
     }
+    for (var column : result.columns) {
+      if (column.equalsIgnoreCase(label)) {
+        return;
+      }
+    }
+    throw badColumn(label);
   }
 
   public static void checkRow(int currentRow, L4Result result, boolean isClosed) throws SQLException {

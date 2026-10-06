@@ -19,6 +19,7 @@ public class L4Client implements Closeable {
   private final String baseUrl;
   private final String executeURL;
   private final String queryURL;
+  private final String requestURL;
   private final String statusURL;
   private final String nodesURL;
   private final String readyURL;
@@ -37,6 +38,7 @@ public class L4Client implements Closeable {
     this.options = Objects.requireNonNull(options);
     this.executeURL = baseURL + "/db/execute";
     this.queryURL = baseURL + "/db/query";
+    this.requestURL = baseURL + "/db/request";
     this.statusURL = baseURL + "/status";
     this.nodesURL = baseURL + "/nodes";
     this.readyURL = baseURL + "/readyz";
@@ -110,14 +112,21 @@ public class L4Client implements Closeable {
     }
   }
 
+  private L4Response toResponse(HttpResponse<String> resp) {
+    var node = Json.parse(resp.body()).asObject();
+    var r = response(resp.statusCode(), node);
+    if (r.error != null) {
+      throw new IllegalStateException(r.error);
+    }
+    return r;
+  }
+
   private L4Response doExecute(boolean transaction, L4Statement ... statements) {
     var queryParams = options.queryParams(transaction);
     var url = executeURL + queryParams;
     var body = L4Statement.toArray(statements).toString();
     var resp = doJSONPostRequest(url, body);
-    var rb = resp.body();
-    var node = Json.parse(rb).asObject();
-    return response(resp.statusCode(), node);
+    return toResponse(resp);
   }
 
   public void stopBuffer(boolean commit, Consumer<L4Response> responseFn) {
@@ -153,9 +162,19 @@ public class L4Client implements Closeable {
     var body = L4Statement.toArray(statements).toString();
     var queryParams = options.queryParams(false);
     var resp = doJSONPostRequest(queryURL + queryParams, body);
-    var rb = resp.body();
-    var node = Json.parse(rb).asObject();
-    return response(resp.statusCode(), node);
+    return toResponse(resp);
+  }
+
+  /**
+   * Sends statements to rqlite's Unified Endpoint, which accepts both read and write
+   * statements and classifies each one server-side. Use this when the statement type
+   * is not known ahead of time.
+   */
+  public L4Response request(L4Statement ... statements) {
+    var body = L4Statement.toArray(statements).toString();
+    var queryParams = options.queryParams(false);
+    var resp = doJSONPostRequest(requestURL + queryParams, body);
+    return toResponse(resp);
   }
 
   public L4Response querySingle(String statement, Object... args) {
@@ -179,15 +198,38 @@ public class L4Client implements Closeable {
     return resp.body();
   }
 
-  public void withTxTimeoutSec(long txTimeoutSec) {
-    if (txTimeoutSec < 0) {
-      throw new IllegalArgumentException(format("Invalid timeout [%d]", txTimeoutSec));
+  public void withQueryTimeoutSec(long queryTimeoutSec) {
+    if (queryTimeoutSec < 0) {
+      throw new IllegalArgumentException(format("Invalid timeout [%d]", queryTimeoutSec));
     }
-    this.options.timeoutSec = txTimeoutSec == 0 ? -1 : txTimeoutSec;
+    this.options.dbTimeoutSec = queryTimeoutSec;
   }
 
-  public long getTxTimeoutSec() {
+  public long getQueryTimeoutSec() {
+    return this.options.dbTimeoutSec;
+  }
+
+  public void withNetworkTimeoutSec(long networkTimeoutSec) {
+    if (networkTimeoutSec < 0) {
+      throw new IllegalArgumentException(format("Invalid timeout [%d]", networkTimeoutSec));
+    }
+    this.options.timeoutSec = networkTimeoutSec;
+  }
+
+  public long getNetworkTimeoutSec() {
     return this.options.timeoutSec;
+  }
+
+  /** @deprecated use {@link #withNetworkTimeoutSec(long)} */
+  @Deprecated
+  public void withTxTimeoutSec(long txTimeoutSec) {
+    withNetworkTimeoutSec(txTimeoutSec);
+  }
+
+  /** @deprecated use {@link #getNetworkTimeoutSec()} */
+  @Deprecated
+  public long getTxTimeoutSec() {
+    return getNetworkTimeoutSec();
   }
 
   public L4Options getOptions() {

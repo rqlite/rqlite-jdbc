@@ -51,10 +51,34 @@ public class L4St implements Statement {
     currentResultSet = null;
   }
 
-  private L4Response runRaw(String sql) throws SQLException {
-    var sel = isSelect(sql);
+  private L4Response runQuery(String sql) throws SQLException {
+    var res = client.query(split(sql));
+    for (var result : res.results) {
+      checkResult(result);
+    }
+    return res;
+  }
+
+  private L4Response runExecute(String sql) throws SQLException {
+    var res = client.execute(isAutoCommit(), split(sql));
+    for (var result : res.results) {
+      checkResult(result);
+    }
+    return res;
+  }
+
+  private L4Response runRequest(String sql) throws SQLException {
     var sta = split(sql);
-    var res = sel ? client.query(sta) : client.execute(isAutoCommit(), sta);
+    L4Response res;
+    if (client.isBuffering()) {
+      res = client.execute(false, sta);
+    } else if (client.getOptions().queue) {
+      // Queued writes are not supported by the Unified Endpoint, so fall back to
+      // dedicated routing when the queue option is enabled.
+      res = isSelect(sql) ? client.query(sta) : client.execute(true, sta);
+    } else {
+      res = client.request(sta);
+    }
     for (var result : res.results) {
       checkResult(result);
     }
@@ -69,7 +93,7 @@ public class L4St implements Statement {
       throw badStatement();
     }
     try {
-      currentResponse = runRaw(sql);
+      currentResponse = runQuery(sql);
       currentResultIndex = 0;
       currentResultSet = new L4Rs(currentResponse.first(), this).clampTo(maxRows);
       return currentResultSet;
@@ -86,8 +110,8 @@ public class L4St implements Statement {
       throw badStatement();
     }
     try {
-      currentResponse = client.execute(isAutoCommit(), new L4Statement().sql(sql));
-      var result = checkResult(currentResponse.first());
+      currentResponse = runExecute(sql);
+      var result = currentResponse.first();
       return result.rowsAffected != null ? result.rowsAffected : 0;
     } catch (Exception e) {
       throw badUpdate(e);
@@ -134,13 +158,13 @@ public class L4St implements Statement {
 
   @Override public int getQueryTimeout() throws SQLException {
     checkClosed();
-    return (int) (client.getTxTimeoutSec() == -1 ? 0 : client.getTxTimeoutSec());
+    return (int) client.getQueryTimeoutSec();
   }
 
   @Override public void setQueryTimeout(int seconds) throws SQLException {
     checkClosed();
     try {
-      client.withTxTimeoutSec(seconds);
+      client.withQueryTimeoutSec(seconds);
     } catch (Exception e) {
       throw badParam(e);
     }
@@ -192,7 +216,7 @@ public class L4St implements Statement {
       throw badStatement();
     }
     try {
-      currentResponse = runRaw(sql);
+      currentResponse = runRequest(sql);
       if (currentResponse.results == null || currentResponse.results.isEmpty()) {
         return false;
       }
@@ -289,7 +313,7 @@ public class L4St implements Statement {
         if (result.error != null) {
           throw new BatchUpdateException(result.error, SqlStateGeneralError, updateCounts, null);
         }
-        updateCounts[i] = result.rowsAffected;
+        updateCounts[i] = result.rowsAffected != null ? result.rowsAffected : 0;
       }
       batch.clear();
       return updateCounts;
@@ -299,7 +323,7 @@ public class L4St implements Statement {
   }
 
   @Override public Connection getConnection() {
-    return null;
+    return conn;
   }
 
   @Override public boolean getMoreResults(int current) throws SQLException {

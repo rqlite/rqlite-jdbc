@@ -10,8 +10,11 @@ import java.time.Duration;
 public class L4Http {
 
   public static HttpClient.Builder defaultHttpClient(long timeoutSec) {
-    return HttpClient.newBuilder()
-      .connectTimeout(Duration.ofSeconds(timeoutSec));
+    var builder = HttpClient.newBuilder();
+    if (timeoutSec > 0) {
+      builder.connectTimeout(Duration.ofSeconds(timeoutSec));
+    }
+    return builder;
   }
 
   public static HttpClient.Builder newTLSSClientInsecure(long timeoutSec) throws Exception {
@@ -26,9 +29,11 @@ public class L4Http {
       }
     };
     sslContext.init(null, trustAll, new SecureRandom());
-    return HttpClient.newBuilder()
-      .sslContext(sslContext)
-      .connectTimeout(Duration.ofSeconds(timeoutSec));
+    var builder = HttpClient.newBuilder().sslContext(sslContext);
+    if (timeoutSec > 0) {
+      builder.connectTimeout(Duration.ofSeconds(timeoutSec));
+    }
+    return builder;
   }
 
   public static HttpClient.Builder newTLSSClient(String caCertPath, long timeoutSec) throws Exception {
@@ -46,9 +51,11 @@ public class L4Http {
 
     var sslContext = SSLContext.getInstance("TLS");
     sslContext.init(null, tmf.getTrustManagers(), new SecureRandom());
-    return HttpClient.newBuilder()
-      .sslContext(sslContext)
-      .connectTimeout(Duration.ofSeconds(timeoutSec));
+    var builder = HttpClient.newBuilder().sslContext(sslContext);
+    if (timeoutSec > 0) {
+      builder.connectTimeout(Duration.ofSeconds(timeoutSec));
+    }
+    return builder;
   }
 
 }

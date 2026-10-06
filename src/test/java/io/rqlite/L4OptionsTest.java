@@ -4,6 +4,7 @@ import io.rqlite.client.L4Client;
 import io.rqlite.client.L4Level;
 import io.rqlite.client.L4Options;
 import io.rqlite.jdbc.L4Conn;
+import io.rqlite.jdbc.L4Driver;
 import j8spec.annotation.DefinedOrder;
 import j8spec.junit.J8SpecRunner;
 import org.junit.runner.RunWith;
@@ -70,6 +71,23 @@ public class L4OptionsTest {
       assertEquals(5000, conn2.getNetworkTimeout());
       assertEquals(12, c1.getOptions().timeoutSec);
       assertEquals(5, c2.getOptions().timeoutSec);
+    });
+
+    it("Shares HttpClient instances per target", () -> {
+      var driver = new L4Driver();
+      var a = new L4Options();
+      a.baseUrl = "http://localhost:4001";
+      var b = new L4Options();
+      b.baseUrl = "http://localhost:4001";
+      var c = new L4Options();
+      c.baseUrl = "http://localhost:4002";
+
+      var ca = driver.createHttpClient(a);
+      var cb = driver.createHttpClient(b);
+      var cc = driver.createHttpClient(c);
+
+      assertSame(ca, cb);
+      assertNotSame(ca, cc);
     });
   }
 

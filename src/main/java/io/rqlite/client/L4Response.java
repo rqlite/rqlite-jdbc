@@ -13,6 +13,7 @@ public class L4Response {
 
   public List<L4Result> results;
   public Float          time;
+  public String         error;
   public int            statusCode;
 
   public void print(PrintStream out) {
@@ -42,6 +43,7 @@ public class L4Response {
       r.results = new ArrayList<>();
     }
     r.time = obj.get("time") != null ? obj.getFloat("time", -1) : null;
+    r.error = obj.get("error") != null ? obj.getString("error", "Unknown error") : null;
     return r;
   }
 

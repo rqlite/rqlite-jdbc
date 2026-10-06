@@ -9,6 +9,7 @@ import java.net.http.HttpClient;
 import java.sql.*;
 import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
 import static io.rqlite.jdbc.L4Err.*;
@@ -20,6 +21,7 @@ public class L4Driver implements Driver {
 
   private static final String JDBC_URL_PREFIX = "jdbc:rqlite:";
   private static final Logger log = Logger.getLogger(L4Driver.class.getName());
+  private static final Map<String, HttpClient> httpClients = new ConcurrentHashMap<>();
 
   static {
     try {
@@ -64,7 +66,23 @@ public class L4Driver implements Driver {
     return createHttpClient(new L4Options());
   }
 
+  /**
+   * Returns a shared {@link HttpClient} for the given target, creating one on first use.
+   * Sharing avoids spawning a new selector thread and connection pool per JDBC connection,
+   * which matters under connection pooling. The client is keyed by target and TLS identity.
+   */
   public HttpClient createHttpClient(L4Options options) throws SQLException {
+    var key = options.baseUrl + "|" + options.insecure + "|" + options.cacert;
+    var existing = httpClients.get(key);
+    if (existing != null) {
+      return existing;
+    }
+    var built = buildHttpClient(options);
+    var prev = httpClients.putIfAbsent(key, built);
+    return prev != null ? prev : built;
+  }
+
+  private HttpClient buildHttpClient(L4Options options) throws SQLException {
     try {
       var isHttps = options.baseUrl.toLowerCase().startsWith("https://");
       var cacert = options.cacert;
@@ -75,10 +93,11 @@ public class L4Driver implements Driver {
       } else if (cacert != null && !cacert.isEmpty()) {
         return L4Http.newTLSSClient(cacert, options.timeoutSec).build();
       } else {
-        return HttpClient.newBuilder()
-          .sslContext(SSLContext.getDefault())
-          .connectTimeout(Duration.ofSeconds(options.timeoutSec))
-          .build();
+        var builder = HttpClient.newBuilder().sslContext(SSLContext.getDefault());
+        if (options.timeoutSec > 0) {
+          builder.connectTimeout(Duration.ofSeconds(options.timeoutSec));
+        }
+        return builder.build();
       }
     } catch (Exception e) {
       throw badParam(e);

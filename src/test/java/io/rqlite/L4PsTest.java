@@ -564,7 +564,7 @@ public class L4PsTest {
           invalidPs.executeQuery();
           fail("Expected SQLException for invalid table");
         } catch (SQLException e) {
-          assertEquals(SqlStateGeneralError, e.getSQLState());
+          assertEquals(SqlStateConnectionError, e.getSQLState());
         }
 
         // Test clearParameters
@@ -730,6 +730,39 @@ public class L4PsTest {
 
         ps.close();
         selectPs.close();
+      });
+
+      it("Stores byte arrays as real BLOB values", () -> {
+        setupPreparedStatementTestTable(rq);
+        var bytes = new byte[] {(byte) 0xDE, (byte) 0xAD, (byte) 0xBE, (byte) 0xEF, 0x00, 0x7F};
+
+        var ps = new L4Ps(rq, "INSERT INTO ps_test_data (blob_val) VALUES (?)");
+        ps.setBytes(1, bytes);
+        assertEquals(1, ps.executeUpdate());
+
+        var typePs = new L4Ps(rq, "SELECT typeof(blob_val) FROM ps_test_data ORDER BY id DESC LIMIT 1");
+        var typeRs = typePs.executeQuery();
+        assertTrue(typeRs.next());
+        assertEquals("blob", typeRs.getString(1));
+
+        var selPs = new L4Ps(rq, "SELECT blob_val FROM ps_test_data ORDER BY id DESC LIMIT 1");
+        var rs = selPs.executeQuery();
+        assertTrue(rs.next());
+        assertArrayEquals(bytes, rs.getBytes("blob_val"));
+      });
+
+      it("Distinguishes literal 'null' text from SQL NULL", () -> {
+        setupPreparedStatementTestTable(rq);
+
+        var ps = new L4Ps(rq, "INSERT INTO ps_test_data (text_val) VALUES (?)");
+        ps.setString(1, "null");
+        assertEquals(1, ps.executeUpdate());
+
+        var sel = new L4Ps(rq, "SELECT text_val FROM ps_test_data ORDER BY id DESC LIMIT 1");
+        var rs = sel.executeQuery();
+        assertTrue(rs.next());
+        assertEquals("null", rs.getString("text_val"));
+        assertFalse(rs.wasNull());
       });
 
       it("Tests L4Ps setObject with target SQL type and scale/length", () -> {

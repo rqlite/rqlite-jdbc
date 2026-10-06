@@ -178,7 +178,7 @@ public class L4Db {
           var notNull = atoi(res0.get(kNotNull, row0));
           var defaultValue = res0.get(kDfltValue, row0);
           var pk = atoi(res0.get(kPk, row0));
-          var isAutoIncrement = pk == 1 && type.contains(RQ_INTEGER) && defaultValue != null && defaultValue.equalsIgnoreCase(kNull);
+          var isAutoIncrement = pk == 1 && type.contains(RQ_INTEGER) && defaultValue == null;
           var sqlType = getJdbcType(type);
           var columnSize = getJdbcTypePrecision(type);
           var decimalDigits = 0;

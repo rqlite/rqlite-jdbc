@@ -46,12 +46,9 @@ public class L4DbMeta implements DatabaseMetaData {
   }
 
   @Override public boolean isReadOnly() throws SQLException {
-    try (var rs = executeQuery("PRAGMA writable_schema")) {
-      if (rs.next()) {
-        return rs.getInt(1) == 0; // 0 means read-only
-      }
-      return false; // Default to writable
-    }
+    // rqlite accepts writes (they are forwarded to the cluster Leader), so from the
+    // client's perspective the database is writable. PRAGMA writable_schema is unrelated.
+    return false;
   }
 
   @Override public boolean nullsAreSortedHigh() {

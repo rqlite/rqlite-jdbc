@@ -77,6 +77,9 @@ public class L4Conn implements Connection {
     L4Log.debug("{} - setAutoCommit: [{}]", this, autoCommit);
     if (!autoCommit) {
       client.startBuffer();
+    } else if (client.isBuffering()) {
+      // Per JDBC, enabling auto-commit commits the current transaction.
+      commit();
     }
   }
 
@@ -89,22 +92,24 @@ public class L4Conn implements Connection {
   @Override public void commit() throws SQLException {
     checkClosed();
     L4Log.debug("{} - commit", this);
-    client.stopBuffer(true, res -> {
-      L4Log.debug("{} - commit result: {}", this, res);
-      if (res.results != null) {
-        for (var result : res.results) {
-          if (result != null && result.error != null) {
-            L4Log.trace(result.error);
-            var w = warnQuery(result.error);
-            if (this.root == null) {
-              this.root = w;
-            } else {
-              this.root.setNextWarning(w);
+    var errors = new ArrayList<String>();
+    try {
+      client.stopBuffer(true, res -> {
+        L4Log.debug("{} - commit result: {}", this, res);
+        if (res != null && res.results != null) {
+          for (var result : res.results) {
+            if (result != null && result.error != null) {
+              errors.add(result.error);
             }
           }
         }
-      }
-    });
+      });
+    } catch (Exception e) {
+      throw badState("Transaction commit failed", e);
+    }
+    if (!errors.isEmpty()) {
+      throw badState("Transaction commit failed: " + String.join("; ", errors));
+    }
   }
 
   @Override public void rollback() throws SQLException {
@@ -372,12 +377,20 @@ public class L4Conn implements Connection {
 
   @Override public void setNetworkTimeout(Executor executor, int milliseconds) throws SQLException {
     checkClosed();
-    client.getOptions().timeoutSec = milliseconds / 1000;
+    if (executor == null) {
+      throw badParam("Executor cannot be null");
+    }
+    if (milliseconds < 0) {
+      throw badParam("Network timeout cannot be negative");
+    }
+    // rqlite expresses timeouts in seconds; round up as permitted by the JDBC spec.
+    var seconds = milliseconds == 0 ? 0 : (milliseconds + 999) / 1000;
+    client.withNetworkTimeoutSec(seconds);
   }
 
   @Override public int getNetworkTimeout() throws SQLException {
     checkClosed();
-    return (int) client.getOptions().timeoutSec * 1000;
+    return (int) client.getNetworkTimeoutSec() * 1000;
   }
 
   @Override public <T> T unwrap(Class<T> iface) throws SQLException {

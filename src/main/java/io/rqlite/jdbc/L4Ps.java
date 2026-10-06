@@ -1,6 +1,7 @@
 package io.rqlite.jdbc;
 
 import io.rqlite.client.L4Client;
+import io.rqlite.client.L4Response;
 import io.rqlite.client.L4Statement;
 
 import java.io.*;
@@ -39,16 +40,30 @@ public class L4Ps extends L4St implements PreparedStatement {
     }
   }
 
-  private void executeInternal() throws SQLException {
+  private static String readChars(Reader reader, long length) throws IOException {
+    var sb = new StringBuilder();
+    var buf = new char[8192];
+    long remaining = length;
+    while (remaining > 0) {
+      int n = reader.read(buf, 0, (int) Math.min(buf.length, remaining));
+      if (n == -1) {
+        break;
+      }
+      sb.append(buf, 0, n);
+      remaining -= n;
+    }
+    return sb.toString();
+  }
+
+  private void executeInternal(L4Block<L4Response> runner) throws SQLException {
     checkClosed();
     closeCurrentResultSet();
     currentResultIndex = -1;
     try {
-      var isSelect = isSelect(statement.sql);
-      currentResponse = isSelect ? client.query(statement) : client.execute(isAutoCommit(), statement);
+      currentResponse = runner.get();
       var result = checkResult(currentResponse.first());
       currentResultIndex = 0;
-      resultSetAvailable = isSelect && result.columns != null && !result.columns.isEmpty();
+      resultSetAvailable = result.columns != null && !result.columns.isEmpty();
       if (resultSetAvailable) {
         currentResultSet = new L4Rs(result, this).clampTo(maxRows);
         if (closeOnCompletion) {
@@ -62,10 +77,7 @@ public class L4Ps extends L4St implements PreparedStatement {
 
   @Override public ResultSet executeQuery() throws SQLException {
     checkClosed();
-    if (!isSelect(statement.sql)) {
-      throw generalError("Statement is not a query");
-    }
-    executeInternal();
+    executeInternal(() -> client.query(statement));
     if (!resultSetAvailable) {
       throw generalError("No result set returned");
     }
@@ -77,14 +89,21 @@ public class L4Ps extends L4St implements PreparedStatement {
     if (isSelect(statement.sql)) {
       throw generalError("Statement is a query");
     }
-    executeInternal();
+    executeInternal(() -> client.execute(isAutoCommit(), statement));
     var result = currentResponse.first();
     return result.rowsAffected != null ? result.rowsAffected : 0;
   }
 
   @Override public boolean execute() throws SQLException {
     checkClosed();
-    executeInternal();
+    executeInternal(() -> {
+      if (client.isBuffering()) {
+        return client.execute(false, statement);
+      } else if (client.getOptions().queue) {
+        return isSelect(statement.sql) ? client.query(statement) : client.execute(true, statement);
+      }
+      return client.request(statement);
+    });
     return resultSetAvailable;
   }
 
@@ -176,7 +195,7 @@ public class L4Ps extends L4St implements PreparedStatement {
 
   @Override public void setBytes(int parameterIndex, byte[] x) throws SQLException {
     checkClosed();
-    statement.withPositionalParam(parameterIndex - 1, x != null ? Base64.getEncoder().encodeToString(x) : null);
+    statement.withPositionalParam(parameterIndex - 1, x);
   }
 
   @Override public void setDate(int parameterIndex, Date x) throws SQLException {
@@ -244,7 +263,7 @@ public class L4Ps extends L4St implements PreparedStatement {
     }
     try {
       var bytes = x.readNBytes(length);
-      statement.withPositionalParam(parameterIndex - 1, Base64.getEncoder().encodeToString(bytes));
+      statement.withPositionalParam(parameterIndex - 1, bytes);
     } catch (IOException e) {
       throw badParam(e);
     }
@@ -272,13 +291,7 @@ public class L4Ps extends L4St implements PreparedStatement {
       return;
     }
     try {
-      var chars = new char[length];
-      int read = reader.read(chars);
-      if (read == -1) {
-        setNull(parameterIndex, Types.VARCHAR);
-      } else {
-        statement.withPositionalParam(parameterIndex - 1, new String(chars, 0, read));
-      }
+      statement.withPositionalParam(parameterIndex - 1, readChars(reader, length));
     } catch (IOException e) {
       throw badParam(e);
     }
@@ -297,7 +310,7 @@ public class L4Ps extends L4St implements PreparedStatement {
     }
     try {
       var bytes = x.getBytes(1, (int) x.length());
-      statement.withPositionalParam(parameterIndex - 1, Base64.getEncoder().encodeToString(bytes));
+      statement.withPositionalParam(parameterIndex - 1, bytes);
     } catch (SQLException e) {
       throw badParam(e);
     }
@@ -392,13 +405,7 @@ public class L4Ps extends L4St implements PreparedStatement {
       return;
     }
     try {
-      var chars = new char[(int) length];
-      int read = value.read(chars);
-      if (read == -1) {
-        setNull(parameterIndex, Types.NVARCHAR);
-      } else {
-        statement.withPositionalParam(parameterIndex - 1, new String(chars, 0, read));
-      }
+      statement.withPositionalParam(parameterIndex - 1, readChars(value, length));
     } catch (IOException e) {
       throw badParam(e);
     }
@@ -425,13 +432,7 @@ public class L4Ps extends L4St implements PreparedStatement {
       return;
     }
     try {
-      var chars = new char[(int) length];
-      int read = reader.read(chars);
-      if (read == -1) {
-        setNull(parameterIndex, Types.CLOB);
-      } else {
-        statement.withPositionalParam(parameterIndex - 1, new String(chars, 0, read));
-      }
+      statement.withPositionalParam(parameterIndex - 1, readChars(reader, length));
     } catch (IOException e) {
       throw badParam(e);
     }
@@ -445,7 +446,7 @@ public class L4Ps extends L4St implements PreparedStatement {
     }
     try {
       var bytes = inputStream.readNBytes((int) length);
-      statement.withPositionalParam(parameterIndex - 1, Base64.getEncoder().encodeToString(bytes));
+      statement.withPositionalParam(parameterIndex - 1, bytes);
     } catch (IOException e) {
       throw badParam(e);
     }
@@ -458,13 +459,7 @@ public class L4Ps extends L4St implements PreparedStatement {
       return;
     }
     try {
-      var chars = new char[(int) length];
-      int read = reader.read(chars);
-      if (read == -1) {
-        setNull(parameterIndex, Types.NCLOB);
-      } else {
-        statement.withPositionalParam(parameterIndex - 1, new String(chars, 0, read));
-      }
+      statement.withPositionalParam(parameterIndex - 1, readChars(reader, length));
     } catch (IOException e) {
       throw badParam(e);
     }
@@ -506,7 +501,7 @@ public class L4Ps extends L4St implements PreparedStatement {
     }
     try {
       var bytes = x.readNBytes((int) length);
-      statement.withPositionalParam(parameterIndex - 1, Base64.getEncoder().encodeToString(bytes));
+      statement.withPositionalParam(parameterIndex - 1, bytes);
     } catch (IOException e) {
       throw badParam(e);
     }
@@ -519,13 +514,7 @@ public class L4Ps extends L4St implements PreparedStatement {
       return;
     }
     try {
-      var chars = new char[(int) length];
-      int read = reader.read(chars);
-      if (read == -1) {
-        setNull(parameterIndex, Types.VARCHAR);
-      } else {
-        statement.withPositionalParam(parameterIndex - 1, new String(chars, 0, read));
-      }
+      statement.withPositionalParam(parameterIndex - 1, readChars(reader, length));
     } catch (IOException e) {
       throw badParam(e);
     }
@@ -553,7 +542,7 @@ public class L4Ps extends L4St implements PreparedStatement {
     }
     try {
       var bytes = x.readAllBytes();
-      statement.withPositionalParam(parameterIndex - 1, Base64.getEncoder().encodeToString(bytes));
+      statement.withPositionalParam(parameterIndex - 1, bytes);
     } catch (IOException e) {
       throw badParam(e);
     }
@@ -612,7 +601,7 @@ public class L4Ps extends L4St implements PreparedStatement {
     }
     try {
       var bytes = inputStream.readAllBytes();
-      statement.withPositionalParam(parameterIndex - 1, Base64.getEncoder().encodeToString(bytes));
+      statement.withPositionalParam(parameterIndex - 1, bytes);
     } catch (IOException e) {
       throw badParam(e);
     }

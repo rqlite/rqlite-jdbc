@@ -468,7 +468,7 @@ public class L4Jdbc {
         case FLOAT:     return castFloat(x.toString(), 1, FLOAT);
         case DOUBLE:    return castDouble(x.toString(), 1, DOUBLE);
         case NUMERIC:
-        case DECIMAL:   return castBigDecimal(x.toString(), 1, NUMERIC, -1).toString();
+        case DECIMAL:   return castBigDecimal(x.toString(), 1, NUMERIC, -1);
         case VARCHAR:
         case NVARCHAR:
         case CLOB:
@@ -479,7 +479,7 @@ public class L4Jdbc {
         case DATALINK:  return castURL(x.toString(), 1, DATALINK).toString();
         case BLOB:
           if (x instanceof byte[]) {
-            return Base64.getEncoder().encodeToString((byte[]) x);
+            return x;
           }
           throw badParam("Invalid BLOB data");
         default:
@@ -525,26 +525,38 @@ public class L4Jdbc {
     }
   }
 
-  public static boolean getJdbcTypeSigned(String rqType) {
-    if (rqType == null || RQ_NULL.equalsIgnoreCase(rqType)) {
-      return false; // NULL or unknown
+  /**
+   * Normalizes a declared rqlite/SQLite type by stripping any size/precision suffix
+   * (e.g. {@code VARCHAR(255)} or {@code DECIMAL(10,2)}) and upper-casing it.
+   */
+  public static String rqBaseType(String rqliteType) {
+    if (rqliteType == null) {
+      return RQ_NULL;
     }
-    var typeUpper = rqType.toUpperCase();
-    return typeUpper.equals(RQ_INTEGER)
-      || typeUpper.equals(RQ_NUMERIC)
-      || typeUpper.equals(RQ_TINYINT)
-      || typeUpper.equals(RQ_SMALLINT)
-      || typeUpper.equals(RQ_BIGINT)
-      || typeUpper.equals(RQ_FLOAT)
-      || typeUpper.equals(RQ_DOUBLE);
+    var t = rqliteType.trim().toUpperCase();
+    if (t.isEmpty()) {
+      return RQ_NULL;
+    }
+    return t.split("[(),]")[0].trim();
+  }
+
+  public static boolean getJdbcTypeSigned(String rqType) {
+    var base = rqBaseType(rqType);
+    return base.equals(RQ_INT)
+      || base.equals(RQ_INTEGER)
+      || base.equals(RQ_NUMERIC)
+      || base.equals(RQ_TINYINT)
+      || base.equals(RQ_SMALLINT)
+      || base.equals(RQ_BIGINT)
+      || base.equals(RQ_FLOAT)
+      || base.equals(RQ_DOUBLE)
+      || base.equals(RQ_REAL);
   }
 
   public static int getJdbcTypePrecision(String rqliteType) {
-    if (rqliteType == null || RQ_NULL.equalsIgnoreCase(rqliteType)) {
-      return 0; // NULL or unknown
-    }
-    var typeUpper = rqliteType.toUpperCase();
+    var typeUpper = rqBaseType(rqliteType);
     switch (typeUpper) {
+      case RQ_INT:
       case RQ_INTEGER:    return 10;     // 32-bit integer (approx 10 digits)
       case RQ_NUMERIC:    return 38;     // Arbitrary precision, conservative estimate
       case RQ_BOOLEAN:    return 1;      // 0 or 1
@@ -554,6 +566,7 @@ public class L4Jdbc {
       case RQ_FLOAT:      return 7;      // Single-precision (approx 7 digits)
       case RQ_DOUBLE:     return 15;     // Double-precision (approx 15 digits)
       case RQ_REAL:       return 7;      // Alias for FLOAT, single-precision
+      case RQ_TEXT:
       case RQ_VARCHAR:    return 255;    // Arbitrary, conservative default
       case RQ_DATE:       return 10;     // "YYYY-MM-DD"
       case RQ_TIME:       return 8;      // "HH:MM:SS"
@@ -568,8 +581,9 @@ public class L4Jdbc {
   }
 
   public static Class<?> getJdbcTypeClass(String type) {
-    var typeUpper = type.toUpperCase();
+    var typeUpper = rqBaseType(type);
     switch (typeUpper) {
+      case RQ_INT:
       case RQ_INTEGER:   return Integer.class;
       case RQ_NUMERIC:   return java.math.BigDecimal.class;
       case RQ_BOOLEAN:   return Boolean.class;
@@ -580,6 +594,7 @@ public class L4Jdbc {
       case RQ_REAL:
         return Float.class;
       case RQ_DOUBLE:    return Double.class;
+      case RQ_TEXT:
       case RQ_VARCHAR:
       case RQ_NVARCHAR:  return String.class;
       case RQ_DATE:      return java.sql.Date.class;
@@ -645,8 +660,9 @@ public class L4Jdbc {
   }
 
   public static int getJdbcTypeColumnDisplaySize(String type) {
-    var typeUpper = type.toUpperCase();
+    var typeUpper = rqBaseType(type);
     switch (typeUpper) {
+      case RQ_INT:
       case RQ_INTEGER:    return 11;   // -2147483648 to 2147483647
       case RQ_NUMERIC:    return 38;   // Arbitrary precision, conservative estimate
       case RQ_BOOLEAN:    return 5;    // "true" or "false"
@@ -656,6 +672,7 @@ public class L4Jdbc {
       case RQ_FLOAT:      return 25;   // Scientific notation, e.g., -1.2345678E123
       case RQ_REAL:       return 25;   // Alias for FLOAT, scientific notation
       case RQ_DOUBLE:     return 25;   // Scientific notation, e.g., -1.234567890123456E123
+      case RQ_TEXT:
       case RQ_VARCHAR:    return 255;  // Arbitrary, conservative default
       case RQ_DATE:       return 10;   // "YYYY-MM-DD"
       case RQ_TIME:       return 8;    // "HH:MM:SS"
@@ -670,10 +687,36 @@ public class L4Jdbc {
   }
 
   public static boolean isSelect(String rawSql) {
-    if (rawSql == null || rawSql.trim().isEmpty()) {
+    if (rawSql == null) {
       return false;
     }
-    return rawSql.toUpperCase().contains("SELECT");
+    var sql = rawSql.trim();
+    // Skip leading line and block comments
+    var advanced = true;
+    while (advanced && !sql.isEmpty()) {
+      advanced = false;
+      if (sql.startsWith("--")) {
+        var nl = sql.indexOf('\n');
+        sql = nl < 0 ? "" : sql.substring(nl + 1).trim();
+        advanced = true;
+      } else if (sql.startsWith("/*")) {
+        var end = sql.indexOf("*/");
+        sql = end < 0 ? "" : sql.substring(end + 2).trim();
+        advanced = true;
+      }
+    }
+    if (sql.isEmpty()) {
+      return false;
+    }
+    var m = java.util.regex.Pattern.compile("^([A-Za-z_]+)").matcher(sql);
+    if (!m.find()) {
+      return false;
+    }
+    var keyword = m.group(1).toUpperCase();
+    return keyword.equals("SELECT")
+      || keyword.equals("VALUES")
+      || keyword.equals("PRAGMA")
+      || keyword.equals("EXPLAIN");
   }
 
   public static String quote(String val) {

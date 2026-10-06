@@ -65,6 +65,11 @@ public class L4DriverTest {
       });
 
       it("Inserts data via object mapping", () -> {
+        // Keep this integration test idempotent when run repeatedly against a shared server.
+        rq.executeSingle("DELETE FROM \"Location\"");
+        rq.executeSingle("DELETE FROM \"Device\"");
+        rq.executeSingle("DELETE FROM \"User\"");
+
         var idFn = new MtMurmur3IFn(1984);
         var fj = new MtJdbc(ds);
         var userDao = new UserDao(L4Db.Main, Fmt, fj, idFn);

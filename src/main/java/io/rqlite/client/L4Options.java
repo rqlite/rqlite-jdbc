@@ -11,7 +11,7 @@ public class L4Options {
     kBaseUrl = "baseUrl", kTimeoutSec = "timeoutSec",
     kQueue = "queue", kWait = "wait", kLevel = "level", kLinearizableTimeoutSec = "linearizableTimeoutSec",
     kFreshnessSec = "freshnessSec", kFreshnessStrict = "freshnessStrict",
-    kUser = "user", kPassword = "password";
+    kUser = "user", kPassword = "password", kDbTimeoutSec = "dbTimeoutSec";
 
   public String  baseUrl, user, password, cacert;
 
@@ -22,6 +22,7 @@ public class L4Options {
   public L4Level level = L4Level.linearizable;
   public long    linearizableTimeoutSec = 5;
   public long    timeoutSec = 5;
+  public long    dbTimeoutSec = 0;
 
   public long    freshnessSec = 5;
   public boolean freshnessStrict = false;
@@ -61,12 +62,14 @@ public class L4Options {
       queue ? kv("queue", true) : null,
       transaction ? kv("transaction", true) : null,
       kv("timings", true),
-      kv("timeout", format("%ds", timeoutSec)),
-      kv("wait", wait),
+      timeoutSec > 0 ? kv("timeout", format("%ds", timeoutSec)) : null,
+      wait ? kv("wait", true) : null,
       kv("level", level),
-      level == L4Level.linearizable ? kv("linearizable_timeout", format("%ds", linearizableTimeoutSec)) : null,
-      kv("freshness", format("%ds", freshnessSec)),
-      kv("freshness_strict", freshnessStrict)
+      level == L4Level.linearizable && linearizableTimeoutSec > 0
+        ? kv("linearizable_timeout", format("%ds", linearizableTimeoutSec)) : null,
+      freshnessSec > 0 ? kv("freshness", format("%ds", freshnessSec)) : null,
+      freshnessStrict ? kv("freshness_strict", true) : null,
+      dbTimeoutSec > 0 ? kv("db_timeout", format("%ds", dbTimeoutSec)) : null
     };
     var params = String.join("&", filterNulls(pairs));
     return String.format("?%s", params);
@@ -83,6 +86,9 @@ public class L4Options {
       }
       if (p.containsKey(kTimeoutSec)) {
         this.timeoutSec = Long.parseLong(get(p, kTimeoutSec));
+      }
+      if (p.containsKey(kDbTimeoutSec)) {
+        this.dbTimeoutSec = Long.parseLong(get(p, kDbTimeoutSec));
       }
       if (p.containsKey(kQueue)) {
         this.queue = Boolean.parseBoolean(get(p, kQueue));

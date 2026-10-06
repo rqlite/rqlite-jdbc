@@ -22,10 +22,13 @@ public class L4Json {
       var row = rowValue.asArray();
       var rowValues = new ArrayList<String>();
       for (int i = 0; i < row.size(); i++) {
-        if (row.get(i).isString()) {
-          rowValues.add(row.get(i).asString());
+        var cell = row.get(i);
+        if (cell.isNull()) {
+          rowValues.add(null);
+        } else if (cell.isString()) {
+          rowValues.add(cell.asString());
         } else {
-          rowValues.add(row.get(i).toString());
+          rowValues.add(cell.toString());
         }
       }
       values.add(rowValues);
@@ -49,7 +52,13 @@ public class L4Json {
     } else if (value instanceof Boolean) {
       return Json.value((Boolean) value);
     } else if (value instanceof byte[]) {
-      return Json.value(java.util.Base64.getEncoder().encodeToString((byte[]) value));
+      // rqlite expects BLOB parameter values as an array of unsigned byte integers
+      // (or an x'hex' string). Base64 strings are stored as TEXT, not BLOB.
+      var bytes = Json.array();
+      for (byte b : (byte[]) value) {
+        bytes.add(b & 0xFF);
+      }
+      return bytes;
     } else {
       return Json.value(value.toString());
     }

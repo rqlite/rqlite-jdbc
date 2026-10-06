@@ -96,8 +96,12 @@ public class L4StTest {
         rs.close();
 
         // Test executeQuery with invalid SQL
-        rs = stmt.executeQuery("SELECT * FROM nonexistent_table");
-        assertNotNull(rs.getWarnings());
+        try {
+          stmt.executeQuery("SELECT * FROM nonexistent_table");
+          fail("Expected SQLException for invalid table");
+        } catch (SQLException e) {
+          assertEquals(SqlStateConnectionError, e.getSQLState());
+        }
         stmt.close();
       });
 
@@ -118,8 +122,12 @@ public class L4StTest {
         assertEquals(0, rowsAffected);
 
         // Test executeUpdate with invalid SQL
-        stmt.executeUpdate("UPDATE nonexistent_table SET num_val = 1");
-        assertNotNull(stmt.getWarnings());
+        try {
+          stmt.executeUpdate("UPDATE nonexistent_table SET num_val = 1");
+          fail("Expected SQLException for invalid table");
+        } catch (SQLException e) {
+          assertEquals(SqlStateConnectionError, e.getSQLState());
+        }
         stmt.close();
       });
 
@@ -163,6 +171,40 @@ public class L4StTest {
         assertTrue(hasResultSet);
         rs = stmt.getResultSet();
         assertFalse(rs.next());
+        rs.close();
+
+        stmt.close();
+      });
+
+      it("Routes INSERT ... SELECT through the correct endpoint", () -> {
+        setupTestTable(rq);
+        var stmt = new L4St(rq);
+
+        stmt.execute("DROP TABLE IF EXISTS st_copy");
+        stmt.execute("CREATE TABLE st_copy (id INTEGER, num_val NUMERIC, bool_val BOOLEAN, text_val VARCHAR)");
+
+        // Contains "SELECT" but is a write; must not be sent to /db/query.
+        stmt.execute(
+          "INSERT INTO st_copy (id, num_val, bool_val, text_val) " +
+          "SELECT id, num_val, bool_val, text_val FROM st_test_data"
+        );
+
+        var rs = stmt.executeQuery("SELECT COUNT(*) AS c FROM st_copy");
+        assertTrue(rs.next());
+        assertTrue(rs.getInt("c") >= 1);
+
+        stmt.execute("DROP TABLE st_copy");
+        stmt.close();
+      });
+
+      it("Resolves column labels case-insensitively", () -> {
+        setupTestTable(rq);
+        var stmt = new L4St(rq);
+
+        var rs = stmt.executeQuery("SELECT * FROM st_test_data WHERE id = 1");
+        assertTrue(rs.next());
+        assertEquals(123.45, rs.getDouble("NUM_VAL"), 0.001);
+        assertEquals(1, rs.getInt("ID"));
         rs.close();
 
         stmt.close();
@@ -247,7 +289,7 @@ public class L4StTest {
         var stmt = new L4St(rq);
 
         // Test default timeout (0, no timeout)
-        assertEquals(rq.getOptions().timeoutSec, stmt.getQueryTimeout());
+        assertEquals(rq.getOptions().dbTimeoutSec, stmt.getQueryTimeout());
         stmt.setQueryTimeout(10);
         assertEquals(10, stmt.getQueryTimeout());
         var rs = stmt.executeQuery("SELECT * FROM st_test_data");

@@ -94,8 +94,9 @@ These options come from `rqlite`'s [Developer Guide](https://rqlite.io/docs/api)
 | `password`                  | `String`  | `null`                   | Password for RQLite server authentication.                                   |
 | `cacert`                    | `String`  | `null`                   | Path to the CA certificate for SSL/TLS connections.                         |
 | `insecure`                  | `boolean` | `false`                  | If `true`, disables SSL/TLS verification (not recommended for production).   |
-| `timeoutSec`                | `long`    | `5`                      | Timeout for HTTP requests in seconds.                                       |
-| `queue`                     | `boolean` | `false`                  | If `true`, enables queuing of requests on the RQLite server.                |
+| `timeoutSec`                | `long`    | `5`                      | Network/request timeout in seconds (connect + request forwarding). `0` disables it. |
+| `dbTimeoutSec`              | `long`    | `0`                      | Per-statement execution timeout in seconds (rqlite `db_timeout`). `0` means no limit. |
+| `queue`                     | `boolean` | `false`                  | If `true`, enables queuing of writes on the RQLite server.                  |
 | `wait`                      | `boolean` | `true`                   | If `true`, waits for the request to be processed by the RQLite leader.      |
 | `level`                     | `L4Level` | `L4Level.linearizable`   | Consistency level for queries (`none`, `weak`, `strong`, `linearizable`).   |
 | `linearizableTimeoutSec`    | `long`    | `5`                      | Timeout for linearizable consistency queries in seconds.                    |
@@ -117,6 +118,21 @@ Result sets are held in memory (mapped from rqlite’s JSON responses to JDBC Re
 ### Catalog Support
 
 Only the `main` SQLite database is reported as a catalog to JDBC.
+
+### Timeouts
+
+Two independent timeouts are supported, mirroring the JDBC standard:
+
+- **Network/request timeout** (`timeoutSec`, `Connection.setNetworkTimeout`): how long to wait for rqlite to reply to a request, and the HTTP connect timeout. Maps to rqlite's request-forwarding `timeout`. `0` disables it.
+- **Per-statement timeout** (`dbTimeoutSec`, `Statement.setQueryTimeout`): how long a single SQL statement may run. Maps to rqlite's `db_timeout`. `0` means no limit.
+
+### Error Handling
+
+rqlite reports statement errors inside an HTTP 200 response. The driver surfaces these as `SQLException`s (mapped consistently at the JDBC boundary), so failed statements, batches, and commits throw rather than being silently ignored.
+
+### BLOB Parameters
+
+`setBytes`, `setBlob`, and binary stream setters send data as a byte array, which rqlite stores as a real `BLOB`. (rqlite treats base64 strings as `TEXT`, so values read back should be accessed via `getBytes`/`getBlob`.)
 
 ### Transaction Limitations
 
