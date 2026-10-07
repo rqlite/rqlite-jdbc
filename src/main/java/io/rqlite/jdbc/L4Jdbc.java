@@ -206,8 +206,21 @@ public class L4Jdbc {
     throw castError(value, columnIndex, sourceJdbcType, NUMERIC);
   }
 
+  /** Source JDBC types whose values can be rendered as text/streams. */
+  private static final int[] TEXT_TYPES = {
+    VARCHAR, CLOB, NCLOB, NVARCHAR, INTEGER, DOUBLE, NUMERIC, BOOLEAN
+  };
+
+  private static byte[] decodeBase64(String value, int columnIndex) throws SQLException {
+    try {
+      return Base64.getDecoder().decode(value);
+    } catch (IllegalArgumentException e) {
+      throw badB64(columnIndex, value, e);
+    }
+  }
+
   public static InputStream castAsciiStream(String value, int columnIndex, int sourceJdbcType) throws SQLException {
-    if (anyOf(sourceJdbcType, VARCHAR, CLOB, NCLOB, NVARCHAR, INTEGER, DOUBLE, NUMERIC, BOOLEAN)) {
+    if (anyOf(sourceJdbcType, TEXT_TYPES)) {
       var asciiBytes = value.getBytes(StandardCharsets.US_ASCII); // Convert non-ASCII to '?'
       return new ByteArrayInputStream(asciiBytes);
     }
@@ -215,7 +228,7 @@ public class L4Jdbc {
   }
 
   public static InputStream castUnicodeStream(String value, int columnIndex, int sourceJdbcType) throws SQLException {
-    if (anyOf(sourceJdbcType, VARCHAR, CLOB, NCLOB, NVARCHAR, INTEGER, DOUBLE, NUMERIC, BOOLEAN)) {
+    if (anyOf(sourceJdbcType, TEXT_TYPES)) {
       var unicodeBytes = value.getBytes(StandardCharsets.UTF_16BE); // Encode as UTF-16BE
       return new ByteArrayInputStream(unicodeBytes);
     }
@@ -224,20 +237,15 @@ public class L4Jdbc {
 
   public static InputStream castBinaryStream(String value, int columnIndex, int sourceJdbcType) throws SQLException {
     if (sourceJdbcType == BLOB) {
-      try {
-        var bytes = Base64.getDecoder().decode(value);
-        return new ByteArrayInputStream(bytes);
-      } catch (IllegalArgumentException e) {
-        throw badB64(columnIndex, value, e);
-      }
-    } else if (anyOf(sourceJdbcType, VARCHAR, CLOB, NCLOB, NVARCHAR, INTEGER, DOUBLE, NUMERIC, BOOLEAN)) {
+      return new ByteArrayInputStream(decodeBase64(value, columnIndex));
+    } else if (anyOf(sourceJdbcType, TEXT_TYPES)) {
       return new ByteArrayInputStream(value.getBytes(StandardCharsets.UTF_8)); // Encode as UTF-8
     }
     throw castError(value, columnIndex, sourceJdbcType, BINARY_STREAM);
   }
 
   public static Reader castCharacterStream(String value, int columnIndex, int sourceJdbcType) throws SQLException {
-    if (anyOf(sourceJdbcType, VARCHAR, CLOB, NCLOB, NVARCHAR, INTEGER, DOUBLE, NUMERIC, BOOLEAN)) {
+    if (anyOf(sourceJdbcType, TEXT_TYPES)) {
       return new StringReader(value);
     }
     throw castError(value, columnIndex, sourceJdbcType, CHARACTER_STREAM);
@@ -245,11 +253,7 @@ public class L4Jdbc {
 
   public static byte[] castBlob(String value, int columnIndex, int sourceJdbcType) throws SQLException {
     if (sourceJdbcType == BLOB) {
-      try {
-        return Base64.getDecoder().decode(value);
-      } catch (IllegalArgumentException e) {
-        throw badB64(columnIndex, value, e);
-      }
+      return decodeBase64(value, columnIndex);
     }
     throw castError(value, columnIndex, sourceJdbcType, BLOB);
   }
@@ -497,32 +501,8 @@ public class L4Jdbc {
     if (rqliteType.isEmpty()) {
       return NULL; // SELECT NULL AS TABLE_CAT, etc...
     }
-    var parts = rqliteType.trim().toUpperCase().split("[(),]");
-    var rqType = parts[0];
-    switch (rqType) {
-      case RQ_INT:
-      case RQ_INTEGER:    return INTEGER;
-      case RQ_NUMERIC:    return NUMERIC;
-      case RQ_BOOLEAN:    return BOOLEAN;
-      case RQ_TINYINT:    return TINYINT;
-      case RQ_SMALLINT:   return SMALLINT;
-      case RQ_BIGINT:     return BIGINT;
-      case RQ_FLOAT:      return FLOAT;
-      case RQ_DOUBLE:     return DOUBLE;
-      case RQ_TEXT:
-      case RQ_VARCHAR:    return VARCHAR;
-      case RQ_DATE:       return DATE;
-      case RQ_TIME:       return TIME;
-      case RQ_TIMESTAMP:  return TIMESTAMP;
-      case RQ_DATALINK:   return DATALINK;
-      case RQ_CLOB:       return CLOB;
-      case RQ_NCLOB:      return NCLOB;
-      case RQ_NVARCHAR:   return NVARCHAR;
-      case RQ_BLOB:       return BLOB;
-      case RQ_NULL:       return NULL;
-      case RQ_REAL:       return FLOAT; // RQLite uses REAL as an alias for FLOAT
-      default: return -1;
-    }
+    var t = RqType.fromBase(rqBaseType(rqliteType));
+    return t == null ? -1 : t.jdbcType;
   }
 
   /**
@@ -541,111 +521,23 @@ public class L4Jdbc {
   }
 
   public static boolean getJdbcTypeSigned(String rqType) {
-    var base = rqBaseType(rqType);
-    return base.equals(RQ_INT)
-      || base.equals(RQ_INTEGER)
-      || base.equals(RQ_NUMERIC)
-      || base.equals(RQ_TINYINT)
-      || base.equals(RQ_SMALLINT)
-      || base.equals(RQ_BIGINT)
-      || base.equals(RQ_FLOAT)
-      || base.equals(RQ_DOUBLE)
-      || base.equals(RQ_REAL);
+    var t = RqType.fromBase(rqBaseType(rqType));
+    return t != null && t.signed;
   }
 
   public static int getJdbcTypePrecision(String rqliteType) {
-    var typeUpper = rqBaseType(rqliteType);
-    switch (typeUpper) {
-      case RQ_INT:
-      case RQ_INTEGER:    return 10;     // 32-bit integer (approx 10 digits)
-      case RQ_NUMERIC:    return 38;     // Arbitrary precision, conservative estimate
-      case RQ_BOOLEAN:    return 1;      // 0 or 1
-      case RQ_TINYINT:    return 3;      // 3 digits (-128 to 127)
-      case RQ_SMALLINT:   return 5;      // 5 digits (-32768 to 32767)
-      case RQ_BIGINT:     return 19;     // 64-bit integer (approx 19 digits)
-      case RQ_FLOAT:      return 7;      // Single-precision (approx 7 digits)
-      case RQ_DOUBLE:     return 15;     // Double-precision (approx 15 digits)
-      case RQ_REAL:       return 7;      // Alias for FLOAT, single-precision
-      case RQ_TEXT:
-      case RQ_VARCHAR:    return 255;    // Arbitrary, conservative default
-      case RQ_DATE:       return 10;     // "YYYY-MM-DD"
-      case RQ_TIME:       return 8;      // "HH:MM:SS"
-      case RQ_TIMESTAMP:  return 19;     // "YYYY-MM-DD HH:MM:SS"
-      case RQ_DATALINK:   return 255;    // URL, conservative default
-      case RQ_CLOB:       return 65535;  // Large text
-      case RQ_NCLOB:      return 65535;  // Large national text
-      case RQ_NVARCHAR:   return 255;    // National text, conservative default
-      case RQ_BLOB:       return 65535;  // Binary data, conservative default
-      default:            return 0;      // Fallback for unknown types
-    }
+    var t = RqType.fromBase(rqBaseType(rqliteType));
+    return t == null ? 0 : t.precision;
   }
 
   public static Class<?> getJdbcTypeClass(String type) {
-    var typeUpper = rqBaseType(type);
-    switch (typeUpper) {
-      case RQ_INT:
-      case RQ_INTEGER:   return Integer.class;
-      case RQ_NUMERIC:   return java.math.BigDecimal.class;
-      case RQ_BOOLEAN:   return Boolean.class;
-      case RQ_TINYINT:   return Byte.class;
-      case RQ_SMALLINT:  return Short.class;
-      case RQ_BIGINT:    return Long.class;
-      case RQ_FLOAT:
-      case RQ_REAL:
-        return Float.class;
-      case RQ_DOUBLE:    return Double.class;
-      case RQ_TEXT:
-      case RQ_VARCHAR:
-      case RQ_NVARCHAR:  return String.class;
-      case RQ_DATE:      return java.sql.Date.class;
-      case RQ_TIME:      return java.sql.Time.class;
-      case RQ_TIMESTAMP: return java.sql.Timestamp.class;
-      case RQ_DATALINK:  return java.net.URL.class;
-      case RQ_CLOB:      return java.sql.Clob.class;
-      case RQ_NCLOB:     return java.sql.NClob.class;
-      case RQ_BLOB:      return byte[].class;
-      default:           return Object.class;
-    }
+    var t = RqType.fromBase(rqBaseType(type));
+    return t == null ? Object.class : t.javaClass;
   }
 
   public static String rqTypeOf(Class<?> clazz) {
-    if (clazz == null) {
-      return RQ_NULL;
-    }
-    if (clazz == Integer.class) {
-      return RQ_INTEGER;
-    } else if (clazz == java.math.BigDecimal.class) {
-      return RQ_NUMERIC;
-    } else if (clazz == Boolean.class) {
-      return RQ_BOOLEAN;
-    } else if (clazz == Byte.class) {
-      return RQ_TINYINT;
-    } else if (clazz == Short.class) {
-      return RQ_SMALLINT;
-    } else if (clazz == Long.class) {
-      return RQ_BIGINT;
-    } else if (clazz == Float.class) {
-      return RQ_FLOAT;
-    } else if (clazz == Double.class) {
-      return RQ_DOUBLE;
-    } else if (clazz == String.class) {
-      return RQ_VARCHAR; // Prefer VARCHAR over NVARCHAR for String
-    } else if (clazz == java.sql.Date.class) {
-      return RQ_DATE;
-    } else if (clazz == java.sql.Time.class) {
-      return RQ_TIME;
-    } else if (clazz == java.sql.Timestamp.class) {
-      return RQ_TIMESTAMP;
-    } else if (clazz == java.net.URL.class) {
-      return RQ_DATALINK;
-    } else if (clazz == java.sql.Clob.class) {
-      return RQ_CLOB;
-    } else if (clazz == java.sql.NClob.class) {
-      return RQ_NCLOB;
-    } else if (clazz == byte[].class) {
-      return RQ_BLOB;
-    }
-    return RQ_NULL;
+    var t = RqType.fromClass(clazz);
+    return t == null ? RQ_NULL : t.name();
   }
 
   public static String rqTypeOf(Object o) {
@@ -660,55 +552,84 @@ public class L4Jdbc {
   }
 
   public static int getJdbcTypeColumnDisplaySize(String type) {
-    var typeUpper = rqBaseType(type);
-    switch (typeUpper) {
-      case RQ_INT:
-      case RQ_INTEGER:    return 11;   // -2147483648 to 2147483647
-      case RQ_NUMERIC:    return 38;   // Arbitrary precision, conservative estimate
-      case RQ_BOOLEAN:    return 5;    // "true" or "false"
-      case RQ_TINYINT:    return 4;    // -128 to 127
-      case RQ_SMALLINT:   return 6;    // -32768 to 32767
-      case RQ_BIGINT:     return 20;   // -2^63 to 2^63-1
-      case RQ_FLOAT:      return 25;   // Scientific notation, e.g., -1.2345678E123
-      case RQ_REAL:       return 25;   // Alias for FLOAT, scientific notation
-      case RQ_DOUBLE:     return 25;   // Scientific notation, e.g., -1.234567890123456E123
-      case RQ_TEXT:
-      case RQ_VARCHAR:    return 255;  // Arbitrary, conservative default
-      case RQ_DATE:       return 10;   // "YYYY-MM-DD"
-      case RQ_TIME:       return 8;    // "HH:MM:SS"
-      case RQ_TIMESTAMP:  return 19;   // "YYYY-MM-DD HH:MM:SS"
-      case RQ_DATALINK:   return 255;  // URL, conservative default
-      case RQ_CLOB:       return 255;  // Large text, conservative default
-      case RQ_NCLOB:      return 255;  // Large national text
-      case RQ_NVARCHAR:   return 255;  // National text, conservative default
-      case RQ_BLOB:       return 255;  // Binary data, conservative default
-      default:            return 4;    // Fallback for unknown types
+    var t = RqType.fromBase(rqBaseType(type));
+    return t == null ? 4 : t.displaySize;
+  }
+
+  /**
+   * If the character at {@code i} begins a quoted region or comment, returns the index just
+   * past that region; otherwise returns {@code -1}. Handles {@code '...'} (with {@code ''}
+   * escape), {@code "..."} (with {@code ""} escape), {@code [...]} and backtick identifiers,
+   * {@code --} line comments and block comments.
+   */
+  private static int skipQuotedOrComment(String s, int i) {
+    int n = s.length();
+    char c = s.charAt(i);
+    if (c == '\'' || c == '"') {
+      int j = i + 1;
+      while (j < n) {
+        if (s.charAt(j) == c) {
+          if (j + 1 < n && s.charAt(j + 1) == c) {
+            j += 2;
+            continue;
+          }
+          return j + 1;
+        }
+        j++;
+      }
+      return n;
     }
+    if (c == '[') {
+      int j = s.indexOf(']', i + 1);
+      return j < 0 ? n : j + 1;
+    }
+    if (c == '`') {
+      int j = s.indexOf('`', i + 1);
+      return j < 0 ? n : j + 1;
+    }
+    if (c == '-' && i + 1 < n && s.charAt(i + 1) == '-') {
+      int j = s.indexOf('\n', i + 2);
+      return j < 0 ? n : j + 1;
+    }
+    if (c == '/' && i + 1 < n && s.charAt(i + 1) == '*') {
+      int j = s.indexOf("*/", i + 2);
+      return j < 0 ? n : j + 2;
+    }
+    return -1;
+  }
+
+  /** Skips leading whitespace and comments, returning the index of the first meaningful char. */
+  private static int skipLeadingTrivia(String s) {
+    int i = 0;
+    int n = s.length();
+    while (i < n) {
+      char c = s.charAt(i);
+      if (Character.isWhitespace(c)) {
+        i++;
+        continue;
+      }
+      if (c == '-' && i + 1 < n && s.charAt(i + 1) == '-') {
+        i = skipQuotedOrComment(s, i);
+        continue;
+      }
+      if (c == '/' && i + 1 < n && s.charAt(i + 1) == '*') {
+        i = skipQuotedOrComment(s, i);
+        continue;
+      }
+      break;
+    }
+    return i;
   }
 
   public static boolean isSelect(String rawSql) {
     if (rawSql == null) {
       return false;
     }
-    var sql = rawSql.trim();
-    // Skip leading line and block comments
-    var advanced = true;
-    while (advanced && !sql.isEmpty()) {
-      advanced = false;
-      if (sql.startsWith("--")) {
-        var nl = sql.indexOf('\n');
-        sql = nl < 0 ? "" : sql.substring(nl + 1).trim();
-        advanced = true;
-      } else if (sql.startsWith("/*")) {
-        var end = sql.indexOf("*/");
-        sql = end < 0 ? "" : sql.substring(end + 2).trim();
-        advanced = true;
-      }
-    }
-    if (sql.isEmpty()) {
+    int start = skipLeadingTrivia(rawSql);
+    if (start >= rawSql.length()) {
       return false;
     }
-    var m = java.util.regex.Pattern.compile("^([A-Za-z_]+)").matcher(sql);
+    var m = java.util.regex.Pattern.compile("^([A-Za-z_]+)").matcher(rawSql.substring(start));
     if (!m.find()) {
       return false;
     }
@@ -763,70 +684,13 @@ public class L4Jdbc {
     int i = 0;
     int n = rawSql.length();
     int next = 1;
-    var inSingle = false;
-    var inDouble = false;
-    var inBracket = false;
-    var inBacktick = false;
-    var lineComment = false;
-    var blockComment = false;
     while (i < n) {
+      int skip = skipQuotedOrComment(rawSql, i);
+      if (skip > i) {
+        i = skip;
+        continue;
+      }
       char c = rawSql.charAt(i);
-      if (lineComment) {
-        if (c == '\n') {
-          lineComment = false;
-        }
-        i++;
-        continue;
-      }
-      if (blockComment) {
-        if (c == '*' && i + 1 < n && rawSql.charAt(i + 1) == '/') {
-          blockComment = false;
-          i += 2;
-        } else {
-          i++;
-        }
-        continue;
-      }
-      if (inSingle) {
-        if (c == '\'') {
-          if (i + 1 < n && rawSql.charAt(i + 1) == '\'') {
-            i += 2;
-          } else {
-            inSingle = false;
-            i++;
-          }
-        } else {
-          i++;
-        }
-        continue;
-      }
-      if (inDouble) {
-        if (c == '"') {
-          inDouble = false;
-        }
-        i++;
-        continue;
-      }
-      if (inBracket) {
-        if (c == ']') {
-          inBracket = false;
-        }
-        i++;
-        continue;
-      }
-      if (inBacktick) {
-        if (c == '`') {
-          inBacktick = false;
-        }
-        i++;
-        continue;
-      }
-      if (c == '\'') { inSingle = true; i++; continue; }
-      if (c == '"') { inDouble = true; i++; continue; }
-      if (c == '[') { inBracket = true; i++; continue; }
-      if (c == '`') { inBacktick = true; i++; continue; }
-      if (c == '-' && i + 1 < n && rawSql.charAt(i + 1) == '-') { lineComment = true; i += 2; continue; }
-      if (c == '/' && i + 1 < n && rawSql.charAt(i + 1) == '*') { blockComment = true; i += 2; continue; }
       if (c == '?') {
         int start = i;
         int j = i + 1;
@@ -858,8 +722,6 @@ public class L4Jdbc {
           i = k;
           continue;
         }
-        i++;
-        continue;
       }
       i++;
     }
@@ -892,115 +754,34 @@ public class L4Jdbc {
     if (rawSql == null) {
       throw new IllegalArgumentException("SQL string cannot be null");
     }
-    rawSql = rawSql.trim();
-    if (rawSql.isEmpty()) {
+    var sql = rawSql.trim();
+    if (sql.isEmpty()) {
       return new L4Statement[0];
     }
 
     var statements = new ArrayList<String>();
     var currentStatement = new StringBuilder();
-    var inSingleQuote = false;
-    var inDoubleQuote = false;
-    var inBracket = false;
-    var inBacktick = false;
-    var inSingleLineComment = false;
-    var inMultiLineComment = false;
-
-    for (int i = 0; i < rawSql.length(); i++) {
-      var c = rawSql.charAt(i);
-      if (inSingleLineComment) {
-        if (c == '\n') {
-          inSingleLineComment = false;
-        }
-        currentStatement.append(c);
+    int i = 0;
+    int n = sql.length();
+    while (i < n) {
+      int skip = skipQuotedOrComment(sql, i);
+      if (skip > i) {
+        currentStatement.append(sql, i, skip);
+        i = skip;
         continue;
       }
-      if (inMultiLineComment) {
-        currentStatement.append(c);
-        if (c == '*' && i + 1 < rawSql.length() && rawSql.charAt(i + 1) == '/') {
-          inMultiLineComment = false;
-          currentStatement.append('/');
-          i++;
-        }
-        continue;
-      }
-      if (inSingleQuote) {
-        currentStatement.append(c);
-        if (c == '\'') {
-          inSingleQuote = false;
-        }
-        continue;
-      }
-      if (c == '\'' && !inDoubleQuote) {
-        if (inSingleQuote && i + 1 < rawSql.length() && rawSql.charAt(i + 1) == '\'') {
-          currentStatement.append(c);
-          currentStatement.append('\'');
-          i++;
-          continue;
-        }
-        inSingleQuote = !inSingleQuote;
-        currentStatement.append(c);
-        continue;
-      }
-      if (inDoubleQuote) {
-        currentStatement.append(c);
-        if (c == '"') {
-          inDoubleQuote = false;
-        }
-        continue;
-      }
-      if (c == '"' && !inSingleQuote) {
-        inDoubleQuote = true;
-        currentStatement.append(c);
-        continue;
-      }
-      if (inBracket) {
-        currentStatement.append(c);
-        if (c == ']') {
-          inBracket = false;
-        }
-        continue;
-      }
-      if (c == '[' && !inSingleQuote && !inDoubleQuote) {
-        inBracket = true;
-        currentStatement.append(c);
-        continue;
-      }
-      if (inBacktick) {
-        currentStatement.append(c);
-        if (c == '`') {
-          inBacktick = false;
-        }
-        continue;
-      }
-      if (c == '`' && !inSingleQuote && !inDoubleQuote) {
-        inBacktick = true;
-        currentStatement.append(c);
-        continue;
-      }
-      if (c == '-' && i + 1 < rawSql.length() && rawSql.charAt(i + 1) == '-') {
-        inSingleLineComment = true;
-        currentStatement.append(c);
-        currentStatement.append('-');
-        i++;
-        continue;
-      }
-      if (c == '/' && i + 1 < rawSql.length() && rawSql.charAt(i + 1) == '*') {
-        inMultiLineComment = true;
-        currentStatement.append(c);
-        currentStatement.append('*');
-        i++;
-        continue;
-      }
+      char c = sql.charAt(i);
       if (c == ';') {
         var stmt = currentStatement.toString().trim();
         if (!stmt.isEmpty()) {
           statements.add(stmt);
         }
-        currentStatement = new StringBuilder();
+        currentStatement.setLength(0);
+        i++;
         continue;
       }
       currentStatement.append(c);
+      i++;
     }
 
     // Add the last statement if non-empty

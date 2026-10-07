@@ -554,19 +554,19 @@ public class L4DbMeta implements DatabaseMetaData {
 
   @Override public ResultSet getProcedures(String catalog, String schemaPattern, String procedureNamePattern) throws SQLException {
     // SQLite does not support stored procedures, return empty result set
-    return executeQuery("SELECT * FROM (SELECT NULL AS PROCEDURE_CAT, NULL AS PROCEDURE_SCHEM, " +
+    return executeQuery(emptyResultSql("SELECT NULL AS PROCEDURE_CAT, NULL AS PROCEDURE_SCHEM, " +
       "NULL AS PROCEDURE_NAME, NULL AS RESERVED1, NULL AS RESERVED2, NULL AS RESERVED3, " +
-      "NULL AS REMARKS, 0 AS PROCEDURE_TYPE, NULL AS SPECIFIC_NAME) WHERE 1=0");
+      "NULL AS REMARKS, 0 AS PROCEDURE_TYPE, NULL AS SPECIFIC_NAME"));
   }
 
   @Override public ResultSet getProcedureColumns(String catalog, String schemaPattern, String procedureNamePattern, String columnNamePattern) throws SQLException {
     // SQLite does not support stored procedures, return empty result set
-    return executeQuery("SELECT * FROM (SELECT NULL AS PROCEDURE_CAT, NULL AS PROCEDURE_SCHEM, " +
+    return executeQuery(emptyResultSql("SELECT NULL AS PROCEDURE_CAT, NULL AS PROCEDURE_SCHEM, " +
       "NULL AS PROCEDURE_NAME, NULL AS COLUMN_NAME, 0 AS COLUMN_TYPE, 0 AS DATA_TYPE, " +
       "NULL AS TYPE_NAME, 0 AS PRECISION, 0 AS LENGTH, 0 AS SCALE, 0 AS RADIX, " +
       "0 AS NULLABLE, NULL AS REMARKS, NULL AS COLUMN_DEF, 0 AS SQL_DATA_TYPE, " +
       "0 AS SQL_DATETIME_SUB, 0 AS CHAR_OCTET_LENGTH, 0 AS ORDINAL_POSITION, " +
-      "NULL AS IS_NULLABLE, NULL AS SPECIFIC_NAME) WHERE 1=0");
+      "NULL AS IS_NULLABLE, NULL AS SPECIFIC_NAME"));
   }
 
   @Override public ResultSet getTables(String catalog, String schemaPattern, String tableNamePattern, String[] types) throws SQLException {
@@ -577,7 +577,7 @@ public class L4DbMeta implements DatabaseMetaData {
 
   @Override public ResultSet getSchemas() throws SQLException {
     // SQLite does not support schemas, return empty result set
-    return executeQuery("SELECT * FROM (SELECT NULL AS TABLE_SCHEM, NULL AS TABLE_CATALOG) WHERE 1=0");
+    return executeQuery(emptyResultSql("SELECT NULL AS TABLE_SCHEM, NULL AS TABLE_CATALOG"));
   }
 
   @Override public ResultSet getCatalogs() throws SQLException {
@@ -599,14 +599,14 @@ public class L4DbMeta implements DatabaseMetaData {
 
   @Override public ResultSet getColumnPrivileges(String catalog, String schema, String table, String columnNamePattern) throws SQLException {
     // SQLite does not support column privileges, return empty result set
-    return executeQuery("SELECT * FROM (SELECT NULL AS TABLE_CAT, NULL AS TABLE_SCHEM, NULL AS TABLE_NAME, " +
-      "NULL AS COLUMN_NAME, NULL AS GRANTOR, NULL AS GRANTEE, NULL AS PRIVILEGE, NULL AS IS_GRANTABLE) WHERE 1=0");
+    return executeQuery(emptyResultSql("SELECT NULL AS TABLE_CAT, NULL AS TABLE_SCHEM, NULL AS TABLE_NAME, " +
+      "NULL AS COLUMN_NAME, NULL AS GRANTOR, NULL AS GRANTEE, NULL AS PRIVILEGE, NULL AS IS_GRANTABLE"));
   }
 
   @Override public ResultSet getTablePrivileges(String catalog, String schemaPattern, String tableNamePattern) throws SQLException {
     // SQLite does not support table privileges, return empty result set
-    return executeQuery("SELECT * FROM (SELECT NULL AS TABLE_CAT, NULL AS TABLE_SCHEM, NULL AS TABLE_NAME, " +
-      "NULL AS GRANTOR, NULL AS GRANTEE, NULL AS PRIVILEGE, NULL AS IS_GRANTABLE) WHERE 1=0");
+    return executeQuery(emptyResultSql("SELECT NULL AS TABLE_CAT, NULL AS TABLE_SCHEM, NULL AS TABLE_NAME, " +
+      "NULL AS GRANTOR, NULL AS GRANTEE, NULL AS PRIVILEGE, NULL AS IS_GRANTABLE"));
   }
 
   @Override public ResultSet getBestRowIdentifier(String catalog, String schema, String table, int scope, boolean nullable) throws SQLException {
@@ -615,9 +615,9 @@ public class L4DbMeta implements DatabaseMetaData {
 
   @Override public ResultSet getVersionColumns(String catalog, String schema, String table) throws SQLException {
     // SQLite does not support version columns, return empty result set
-    return executeQuery("SELECT * FROM (SELECT NULL AS SCOPE, NULL AS COLUMN_NAME, 0 AS DATA_TYPE, " +
+    return executeQuery(emptyResultSql("SELECT NULL AS SCOPE, NULL AS COLUMN_NAME, 0 AS DATA_TYPE, " +
       "NULL AS TYPE_NAME, 0 AS COLUMN_SIZE, 0 AS BUFFER_LENGTH, 0 AS DECIMAL_DIGITS, " +
-      "0 AS PSEUDO_COLUMN) WHERE 1=0");
+      "0 AS PSEUDO_COLUMN"));
   }
 
   @Override public ResultSet getPrimaryKeys(String catalog, String schema, String table) throws SQLException {
@@ -698,8 +698,8 @@ public class L4DbMeta implements DatabaseMetaData {
 
   @Override public ResultSet getUDTs(String catalog, String schemaPattern, String typeNamePattern, int[] types) throws SQLException {
     // SQLite does not support UDTs, return empty result set
-    return executeQuery("SELECT * FROM (SELECT NULL AS TYPE_CAT, NULL AS TYPE_SCHEM, NULL AS TYPE_NAME, " +
-      "NULL AS CLASS_NAME, 0 AS DATA_TYPE, NULL AS REMARKS, 0 AS BASE_TYPE) WHERE 1=0");
+    return executeQuery(emptyResultSql("SELECT NULL AS TYPE_CAT, NULL AS TYPE_SCHEM, NULL AS TYPE_NAME, " +
+      "NULL AS CLASS_NAME, 0 AS DATA_TYPE, NULL AS REMARKS, 0 AS BASE_TYPE"));
   }
 
   @Override public Connection getConnection() throws SQLException {
@@ -729,24 +729,24 @@ public class L4DbMeta implements DatabaseMetaData {
 
   @Override public ResultSet getSuperTypes(String catalog, String schemaPattern, String typeNamePattern) throws SQLException {
     // SQLite does not support UDTs, return empty result set
-    return executeQuery("SELECT * FROM (SELECT NULL AS TYPE_CAT, NULL AS TYPE_SCHEM, NULL AS TYPE_NAME, " +
-      "NULL AS SUPERTYPE_CAT, NULL AS SUPERTYPE_SCHEM, NULL AS SUPERTYPE_NAME) WHERE 1=0");
+    return executeQuery(emptyResultSql("SELECT NULL AS TYPE_CAT, NULL AS TYPE_SCHEM, NULL AS TYPE_NAME, " +
+      "NULL AS SUPERTYPE_CAT, NULL AS SUPERTYPE_SCHEM, NULL AS SUPERTYPE_NAME"));
   }
 
   @Override public ResultSet getSuperTables(String catalog, String schemaPattern, String tableNamePattern) throws SQLException {
     // SQLite does not support table inheritance, return empty result set
-    return executeQuery("SELECT * FROM (SELECT NULL AS TABLE_CAT, NULL AS TABLE_SCHEM, NULL AS TABLE_NAME, " +
-      "NULL AS SUPERTABLE_NAME) WHERE 1=0");
+    return executeQuery(emptyResultSql("SELECT NULL AS TABLE_CAT, NULL AS TABLE_SCHEM, NULL AS TABLE_NAME, " +
+      "NULL AS SUPERTABLE_NAME"));
   }
 
   @Override public ResultSet getAttributes(String catalog, String schemaPattern, String typeNamePattern, String attributeNamePattern) throws SQLException {
     // SQLite does not support UDTs, return empty result set
-    return executeQuery("SELECT * FROM (SELECT NULL AS TYPE_CAT, NULL AS TYPE_SCHEM, NULL AS TYPE_NAME, " +
+    return executeQuery(emptyResultSql("SELECT NULL AS TYPE_CAT, NULL AS TYPE_SCHEM, NULL AS TYPE_NAME, " +
       "NULL AS ATTR_NAME, 0 AS DATA_TYPE, NULL AS ATTR_TYPE_NAME, 0 AS ATTR_SIZE, " +
       "0 AS DECIMAL_DIGITS, 0 AS NUM_PREC_RADIX, 0 AS NULLABLE, NULL AS REMARKS, " +
       "NULL AS ATTR_DEF, 0 AS SQL_DATA_TYPE, 0 AS SQL_DATETIME_SUB, 0 AS CHAR_OCTET_LENGTH, " +
       "0 AS ORDINAL_POSITION, NULL AS IS_NULLABLE, NULL AS SCOPE_CATALOG, NULL AS SCOPE_SCHEMA, " +
-      "NULL AS SCOPE_TABLE, 0 AS SOURCE_DATA_TYPE) WHERE 1=0");
+      "NULL AS SCOPE_TABLE, 0 AS SOURCE_DATA_TYPE"));
   }
 
   @Override public boolean supportsResultSetHoldability(int holdability) {
@@ -806,31 +806,31 @@ public class L4DbMeta implements DatabaseMetaData {
 
   @Override public ResultSet getClientInfoProperties() throws SQLException {
     // No client info properties supported
-    return executeQuery("SELECT * FROM (SELECT NULL AS NAME, 0 AS MAX_LEN, NULL AS DEFAULT_VALUE, " +
-      "NULL AS DESCRIPTION) WHERE 1=0");
+    return executeQuery(emptyResultSql("SELECT NULL AS NAME, 0 AS MAX_LEN, NULL AS DEFAULT_VALUE, " +
+      "NULL AS DESCRIPTION"));
   }
 
   @Override public ResultSet getFunctions(String catalog, String schemaPattern, String functionNamePattern) throws SQLException {
     // SQLite does not support stored functions
-    return executeQuery("SELECT * FROM (SELECT NULL AS FUNCTION_CAT, NULL AS FUNCTION_SCHEM, " +
-      "NULL AS FUNCTION_NAME, NULL AS REMARKS, 0 AS FUNCTION_TYPE, NULL AS SPECIFIC_NAME) WHERE 1=0");
+    return executeQuery(emptyResultSql("SELECT NULL AS FUNCTION_CAT, NULL AS FUNCTION_SCHEM, " +
+      "NULL AS FUNCTION_NAME, NULL AS REMARKS, 0 AS FUNCTION_TYPE, NULL AS SPECIFIC_NAME"));
   }
 
   @Override public ResultSet getFunctionColumns(String catalog, String schemaPattern, String functionNamePattern, String columnNamePattern) throws SQLException {
     // No stored functions, return empty result set
-    return executeQuery("SELECT * FROM (SELECT NULL AS FUNCTION_CAT, NULL AS FUNCTION_SCHEM, " +
+    return executeQuery(emptyResultSql("SELECT NULL AS FUNCTION_CAT, NULL AS FUNCTION_SCHEM, " +
       "NULL AS FUNCTION_NAME, NULL AS COLUMN_NAME, 0 AS COLUMN_TYPE, 0 AS DATA_TYPE, " +
       "NULL AS TYPE_NAME, 0 AS PRECISION, 0 AS LENGTH, 0 AS SCALE, 0 AS RADIX, " +
       "0 AS NULLABLE, NULL AS REMARKS, 0 AS CHAR_OCTET_LENGTH, 0 AS ORDINAL_POSITION, " +
-      "NULL AS IS_NULLABLE, NULL AS SPECIFIC_NAME) WHERE 1=0");
+      "NULL AS IS_NULLABLE, NULL AS SPECIFIC_NAME"));
   }
 
   @Override public ResultSet getPseudoColumns(String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern) throws SQLException {
     // SQLite does not support pseudo columns, return empty result set
-    return executeQuery("SELECT * FROM (SELECT NULL AS TABLE_CAT, NULL AS TABLE_SCHEM, NULL AS TABLE_NAME, " +
+    return executeQuery(emptyResultSql("SELECT NULL AS TABLE_CAT, NULL AS TABLE_SCHEM, NULL AS TABLE_NAME, " +
       "NULL AS COLUMN_NAME, 0 AS DATA_TYPE, 0 AS COLUMN_SIZE, 0 AS DECIMAL_DIGITS, " +
       "0 AS NUM_PREC_RADIX, NULL AS COLUMN_USAGE, NULL AS REMARKS, 0 AS CHAR_OCTET_LENGTH, " +
-      "NULL AS IS_NULLABLE) WHERE 1=0");
+      "NULL AS IS_NULLABLE"));
   }
 
   @Override public boolean generatedKeyAlwaysReturned() {
@@ -838,20 +838,11 @@ public class L4DbMeta implements DatabaseMetaData {
   }
 
   @Override public <T> T unwrap(Class<T> iface) throws SQLException {
-    if (iface == null) {
-      throw badInterface();
-    }
-    if (iface.isAssignableFrom(getClass())) {
-      return iface.cast(this);
-    }
-    throw badUnwrap(iface);
+    return L4Err.unwrap(iface, this);
   }
 
   @Override public boolean isWrapperFor(Class<?> iface) throws SQLException {
-    if (iface == null) {
-      throw badInterface();
-    }
-    return iface.isAssignableFrom(getClass());
+    return L4Err.isWrapperFor(iface, this);
   }
 
 }

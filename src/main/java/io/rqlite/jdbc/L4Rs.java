@@ -656,20 +656,11 @@ public class L4Rs implements ResultSet {
   }
 
   @Override public <T> T unwrap(Class<T> iface) throws SQLException {
-    if (iface == null) {
-      throw badInterface();
-    }
-    if (iface.isAssignableFrom(getClass())) {
-      return iface.cast(this);
-    }
-    throw badUnwrap(iface);
+    return L4Err.unwrap(iface, this);
   }
 
   @Override public boolean isWrapperFor(Class<?> iface) throws SQLException {
-    if (iface == null) {
-      throw badInterface();
-    }
-    return iface.isAssignableFrom(getClass());
+    return L4Err.isWrapperFor(iface, this);
   }
 
 }

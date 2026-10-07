@@ -53,20 +53,28 @@ public class L4St implements Statement {
     currentResultSet = null;
   }
 
-  private L4Response runQuery(String sql) throws SQLException {
-    var res = client.query(split(sql));
+  private L4Response checkResults(L4Response res) {
     for (var result : res.results) {
       checkResult(result);
     }
     return res;
   }
 
-  private L4Response runExecute(String sql) throws SQLException {
-    var res = client.execute(isAutoCommit(), split(sql));
-    for (var result : res.results) {
-      checkResult(result);
+  private void begin(String sql) throws SQLException {
+    checkClosed();
+    closeCurrentResultSet();
+    currentResultIndex = -1;
+    if (sql == null || sql.trim().isEmpty()) {
+      throw badStatement();
     }
-    return res;
+  }
+
+  private L4Response runQuery(String sql) throws SQLException {
+    return checkResults(client.query(split(sql)));
+  }
+
+  private L4Response runExecute(String sql) throws SQLException {
+    return checkResults(client.execute(isAutoCommit(), split(sql)));
   }
 
   private L4Response runRequest(String sql) throws SQLException {
@@ -81,19 +89,11 @@ public class L4St implements Statement {
     } else {
       res = client.request(sta);
     }
-    for (var result : res.results) {
-      checkResult(result);
-    }
-    return res;
+    return checkResults(res);
   }
 
   @Override public ResultSet executeQuery(String sql) throws SQLException {
-    checkClosed();
-    closeCurrentResultSet();
-    currentResultIndex = -1;
-    if (sql == null || sql.trim().isEmpty()) {
-      throw badStatement();
-    }
+    begin(sql);
     try {
       currentResponse = runQuery(sql);
       currentResultIndex = 0;
@@ -105,12 +105,7 @@ public class L4St implements Statement {
   }
 
   @Override public int executeUpdate(String sql) throws SQLException {
-    checkClosed();
-    closeCurrentResultSet();
-    currentResultIndex = -1;
-    if (sql == null || sql.trim().isEmpty()) {
-      throw badStatement();
-    }
+    begin(sql);
     try {
       currentResponse = runExecute(sql);
       var result = currentResponse.first();
@@ -211,12 +206,7 @@ public class L4St implements Statement {
   }
 
   @Override public boolean execute(String sql) throws SQLException {
-    checkClosed();
-    closeCurrentResultSet();
-    currentResultIndex = -1;
-    if (sql == null || sql.trim().isEmpty()) {
-      throw badStatement();
-    }
+    begin(sql);
     try {
       currentResponse = runRequest(sql);
       if (currentResponse.results == null || currentResponse.results.isEmpty()) {
@@ -436,20 +426,11 @@ public class L4St implements Statement {
   }
 
   @Override public <T> T unwrap(Class<T> iface) throws SQLException {
-    if (iface == null) {
-      throw badInterface();
-    }
-    if (iface.isAssignableFrom(getClass())) {
-      return iface.cast(this);
-    }
-    throw badUnwrap(iface);
+    return L4Err.unwrap(iface, this);
   }
 
   @Override public boolean isWrapperFor(Class<?> iface) throws SQLException {
-    if (iface == null) {
-      throw badInterface();
-    }
-    return iface.isAssignableFrom(getClass());
+    return L4Err.isWrapperFor(iface, this);
   }
 
 }

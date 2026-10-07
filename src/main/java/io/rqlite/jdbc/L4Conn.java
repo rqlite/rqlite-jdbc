@@ -395,15 +395,12 @@ public class L4Conn implements Connection {
 
   @Override public <T> T unwrap(Class<T> iface) throws SQLException {
     checkClosed();
-    if (iface.isAssignableFrom(getClass())) {
-      return iface.cast(this);
-    }
-    throw badState(format("Cannot unwrap to %s", iface.getName()));
+    return L4Err.unwrap(iface, this);
   }
 
   @Override public boolean isWrapperFor(Class<?> iface) throws SQLException {
     checkClosed();
-    return iface.isAssignableFrom(getClass());
+    return L4Err.isWrapperFor(iface, this);
   }
 
   @Override public String toString() {

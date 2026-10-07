@@ -8,6 +8,7 @@ import java.io.*;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.sql.Date;
@@ -53,6 +54,51 @@ public class L4Ps extends L4St implements PreparedStatement {
       remaining -= n;
     }
     return sb.toString();
+  }
+
+  private static String readAll(Reader reader) throws IOException {
+    var writer = new StringWriter();
+    reader.transferTo(writer);
+    return writer.toString();
+  }
+
+  private void setStreamBytes(int parameterIndex, InputStream x, long length, int nullType) throws SQLException {
+    if (x == null) {
+      setNull(parameterIndex, nullType);
+      return;
+    }
+    try {
+      var bytes = length < 0 ? x.readAllBytes() : x.readNBytes((int) length);
+      statement.withPositionalParam(parameterIndex - 1, bytes);
+    } catch (IOException e) {
+      throw badParam(e);
+    }
+  }
+
+  private void setStreamString(int parameterIndex, InputStream x, long length, Charset charset, int nullType) throws SQLException {
+    if (x == null) {
+      setNull(parameterIndex, nullType);
+      return;
+    }
+    try {
+      var bytes = length < 0 ? x.readAllBytes() : x.readNBytes((int) length);
+      statement.withPositionalParam(parameterIndex - 1, new String(bytes, charset));
+    } catch (IOException e) {
+      throw badParam(e);
+    }
+  }
+
+  private void setReaderString(int parameterIndex, Reader reader, long length, int nullType) throws SQLException {
+    if (reader == null) {
+      setNull(parameterIndex, nullType);
+      return;
+    }
+    try {
+      var value = length < 0 ? readAll(reader) : readChars(reader, length);
+      statement.withPositionalParam(parameterIndex - 1, value);
+    } catch (IOException e) {
+      throw badParam(e);
+    }
   }
 
   private void executeInternal(L4Block<L4Response> runner) throws SQLException {
@@ -234,44 +280,17 @@ public class L4Ps extends L4St implements PreparedStatement {
 
   @Override public void setAsciiStream(int parameterIndex, InputStream x, int length) throws SQLException {
     checkClosed();
-    if (x == null) {
-      setNull(parameterIndex, Types.VARCHAR);
-      return;
-    }
-    try {
-      var bytes = x.readNBytes(length);
-      statement.withPositionalParam(parameterIndex - 1, new String(bytes, StandardCharsets.US_ASCII));
-    } catch (IOException e) {
-      throw badParam(e);
-    }
+    setStreamString(parameterIndex, x, length, StandardCharsets.US_ASCII, Types.VARCHAR);
   }
 
   @Override public void setUnicodeStream(int parameterIndex, InputStream x, int length) throws SQLException {
     checkClosed();
-    if (x == null) {
-      setNull(parameterIndex, Types.VARCHAR);
-      return;
-    }
-    try {
-      var bytes = x.readNBytes(length);
-      statement.withPositionalParam(parameterIndex - 1, new String(bytes, StandardCharsets.UTF_16));
-    } catch (IOException e) {
-      throw badParam(e);
-    }
+    setStreamString(parameterIndex, x, length, StandardCharsets.UTF_16, Types.VARCHAR);
   }
 
   @Override public void setBinaryStream(int parameterIndex, InputStream x, int length) throws SQLException {
     checkClosed();
-    if (x == null) {
-      setNull(parameterIndex, Types.BLOB);
-      return;
-    }
-    try {
-      var bytes = x.readNBytes(length);
-      statement.withPositionalParam(parameterIndex - 1, bytes);
-    } catch (IOException e) {
-      throw badParam(e);
-    }
+    setStreamBytes(parameterIndex, x, length, Types.BLOB);
   }
 
   @Override public void clearParameters() throws SQLException {
@@ -291,15 +310,7 @@ public class L4Ps extends L4St implements PreparedStatement {
 
   @Override public void setCharacterStream(int parameterIndex, Reader reader, int length) throws SQLException {
     checkClosed();
-    if (reader == null) {
-      setNull(parameterIndex, Types.VARCHAR);
-      return;
-    }
-    try {
-      statement.withPositionalParam(parameterIndex - 1, readChars(reader, length));
-    } catch (IOException e) {
-      throw badParam(e);
-    }
+    setReaderString(parameterIndex, reader, length, Types.VARCHAR);
   }
 
   @Override public void setRef(int parameterIndex, Ref x) throws SQLException {
@@ -357,32 +368,15 @@ public class L4Ps extends L4St implements PreparedStatement {
   }
 
   @Override public void setDate(int parameterIndex, Date x, Calendar cal) throws SQLException {
-    checkClosed();
-    if (x == null) {
-      setNull(parameterIndex, Types.DATE);
-      return;
-    }
-    var utcDate = L4Utc.utcOf(x);
-    statement.withPositionalParam(parameterIndex - 1, utcDate.toString()); // Format: YYYY-MM-DD
+    setDate(parameterIndex, x);
   }
 
   @Override public void setTime(int parameterIndex, Time x, Calendar cal) throws SQLException {
-    checkClosed();
-    if (x == null) {
-      setNull(parameterIndex, Types.TIME);
-      return;
-    }
-    var utcTime = L4Utc.utcOf(x);
-    statement.withPositionalParam(parameterIndex - 1, utcTime.toString()); // Format: HH:MM:SS
+    setTime(parameterIndex, x);
   }
 
   @Override public void setTimestamp(int parameterIndex, Timestamp x, Calendar cal) throws SQLException {
-    checkClosed();
-    if (x == null) {
-      setNull(parameterIndex, Types.TIMESTAMP);
-      return;
-    }
-    statement.withPositionalParam(parameterIndex - 1, L4Utc.utcFmtOf(x));
+    setTimestamp(parameterIndex, x);
   }
 
   @Override public void setNull(int parameterIndex, int sqlType, String typeName) throws SQLException {
@@ -412,15 +406,7 @@ public class L4Ps extends L4St implements PreparedStatement {
 
   @Override public void setNCharacterStream(int parameterIndex, Reader value, long length) throws SQLException {
     checkClosed();
-    if (value == null) {
-      setNull(parameterIndex, Types.NVARCHAR);
-      return;
-    }
-    try {
-      statement.withPositionalParam(parameterIndex - 1, readChars(value, length));
-    } catch (IOException e) {
-      throw badParam(e);
-    }
+    setReaderString(parameterIndex, value, length, Types.NVARCHAR);
   }
 
   @Override public void setNClob(int parameterIndex, NClob value) throws SQLException {
@@ -439,42 +425,17 @@ public class L4Ps extends L4St implements PreparedStatement {
 
   @Override public void setClob(int parameterIndex, Reader reader, long length) throws SQLException {
     checkClosed();
-    if (reader == null) {
-      setNull(parameterIndex, Types.CLOB);
-      return;
-    }
-    try {
-      statement.withPositionalParam(parameterIndex - 1, readChars(reader, length));
-    } catch (IOException e) {
-      throw badParam(e);
-    }
+    setReaderString(parameterIndex, reader, length, Types.CLOB);
   }
 
   @Override public void setBlob(int parameterIndex, InputStream inputStream, long length) throws SQLException {
     checkClosed();
-    if (inputStream == null) {
-      setNull(parameterIndex, Types.BLOB);
-      return;
-    }
-    try {
-      var bytes = inputStream.readNBytes((int) length);
-      statement.withPositionalParam(parameterIndex - 1, bytes);
-    } catch (IOException e) {
-      throw badParam(e);
-    }
+    setStreamBytes(parameterIndex, inputStream, length, Types.BLOB);
   }
 
   @Override public void setNClob(int parameterIndex, Reader reader, long length) throws SQLException {
     checkClosed();
-    if (reader == null) {
-      setNull(parameterIndex, Types.NCLOB);
-      return;
-    }
-    try {
-      statement.withPositionalParam(parameterIndex - 1, readChars(reader, length));
-    } catch (IOException e) {
-      throw badParam(e);
-    }
+    setReaderString(parameterIndex, reader, length, Types.NCLOB);
   }
 
   @Override public void setSQLXML(int parameterIndex, SQLXML xmlObject) throws SQLException {
@@ -493,145 +454,52 @@ public class L4Ps extends L4St implements PreparedStatement {
 
   @Override public void setAsciiStream(int parameterIndex, InputStream x, long length) throws SQLException {
     checkClosed();
-    if (x == null) {
-      setNull(parameterIndex, Types.VARCHAR);
-      return;
-    }
-    try {
-      var bytes = x.readNBytes((int) length);
-      statement.withPositionalParam(parameterIndex - 1, new String(bytes, StandardCharsets.US_ASCII));
-    } catch (IOException e) {
-      throw badParam(e);
-    }
+    setStreamString(parameterIndex, x, length, StandardCharsets.US_ASCII, Types.VARCHAR);
   }
 
   @Override public void setBinaryStream(int parameterIndex, InputStream x, long length) throws SQLException {
     checkClosed();
-    if (x == null) {
-      setNull(parameterIndex, Types.BLOB);
-      return;
-    }
-    try {
-      var bytes = x.readNBytes((int) length);
-      statement.withPositionalParam(parameterIndex - 1, bytes);
-    } catch (IOException e) {
-      throw badParam(e);
-    }
+    setStreamBytes(parameterIndex, x, length, Types.BLOB);
   }
 
   @Override public void setCharacterStream(int parameterIndex, Reader reader, long length) throws SQLException {
     checkClosed();
-    if (reader == null) {
-      setNull(parameterIndex, Types.VARCHAR);
-      return;
-    }
-    try {
-      statement.withPositionalParam(parameterIndex - 1, readChars(reader, length));
-    } catch (IOException e) {
-      throw badParam(e);
-    }
+    setReaderString(parameterIndex, reader, length, Types.VARCHAR);
   }
 
   @Override public void setAsciiStream(int parameterIndex, InputStream x) throws SQLException {
     checkClosed();
-    if (x == null) {
-      setNull(parameterIndex, Types.VARCHAR);
-      return;
-    }
-    try {
-      var bytes = x.readAllBytes();
-      statement.withPositionalParam(parameterIndex - 1, new String(bytes, StandardCharsets.US_ASCII));
-    } catch (IOException e) {
-      throw badParam(e);
-    }
+    setStreamString(parameterIndex, x, -1, StandardCharsets.US_ASCII, Types.VARCHAR);
   }
 
   @Override public void setBinaryStream(int parameterIndex, InputStream x) throws SQLException {
     checkClosed();
-    if (x == null) {
-      setNull(parameterIndex, Types.BLOB);
-      return;
-    }
-    try {
-      var bytes = x.readAllBytes();
-      statement.withPositionalParam(parameterIndex - 1, bytes);
-    } catch (IOException e) {
-      throw badParam(e);
-    }
+    setStreamBytes(parameterIndex, x, -1, Types.BLOB);
   }
 
   @Override public void setCharacterStream(int parameterIndex, Reader reader) throws SQLException {
     checkClosed();
-    if (reader == null) {
-      setNull(parameterIndex, Types.VARCHAR);
-      return;
-    }
-    try {
-      var writer = new StringWriter();
-      reader.transferTo(writer);
-      statement.withPositionalParam(parameterIndex - 1, writer.toString());
-    } catch (IOException e) {
-      throw badParam(e);
-    }
+    setReaderString(parameterIndex, reader, -1, Types.VARCHAR);
   }
 
   @Override public void setNCharacterStream(int parameterIndex, Reader value) throws SQLException {
     checkClosed();
-    if (value == null) {
-      setNull(parameterIndex, Types.NVARCHAR);
-      return;
-    }
-    try {
-      var writer = new StringWriter();
-      value.transferTo(writer);
-      statement.withPositionalParam(parameterIndex - 1, writer.toString());
-    } catch (IOException e) {
-      throw badParam(e);
-    }
+    setReaderString(parameterIndex, value, -1, Types.NVARCHAR);
   }
 
   @Override public void setClob(int parameterIndex, Reader reader) throws SQLException {
     checkClosed();
-    if (reader == null) {
-      setNull(parameterIndex, Types.CLOB);
-      return;
-    }
-    try {
-      var writer = new StringWriter();
-      reader.transferTo(writer);
-      statement.withPositionalParam(parameterIndex - 1, writer.toString());
-    } catch (IOException e) {
-      throw badParam(e);
-    }
+    setReaderString(parameterIndex, reader, -1, Types.CLOB);
   }
 
   @Override public void setBlob(int parameterIndex, InputStream inputStream) throws SQLException {
     checkClosed();
-    if (inputStream == null) {
-      setNull(parameterIndex, Types.BLOB);
-      return;
-    }
-    try {
-      var bytes = inputStream.readAllBytes();
-      statement.withPositionalParam(parameterIndex - 1, bytes);
-    } catch (IOException e) {
-      throw badParam(e);
-    }
+    setStreamBytes(parameterIndex, inputStream, -1, Types.BLOB);
   }
 
   @Override public void setNClob(int parameterIndex, Reader reader) throws SQLException {
     checkClosed();
-    if (reader == null) {
-      setNull(parameterIndex, Types.NCLOB);
-      return;
-    }
-    try {
-      var writer = new StringWriter();
-      reader.transferTo(writer);
-      statement.withPositionalParam(parameterIndex - 1, writer.toString());
-    } catch (IOException e) {
-      throw badParam(e);
-    }
+    setReaderString(parameterIndex, reader, -1, Types.NCLOB);
   }
 
   @Override public ResultSet executeQuery(String sql) throws SQLException {
@@ -671,20 +539,11 @@ public class L4Ps extends L4St implements PreparedStatement {
   }
 
   @Override public <T> T unwrap(Class<T> iface) throws SQLException {
-    if (iface == null) {
-      throw badInterface();
-    }
-    if (iface.isAssignableFrom(getClass())) {
-      return iface.cast(this);
-    }
-    throw badUnwrap(iface);
+    return L4Err.unwrap(iface, this);
   }
 
   @Override public boolean isWrapperFor(Class<?> iface) throws SQLException {
-    if (iface == null) {
-      throw badInterface();
-    }
-    return iface.isAssignableFrom(getClass());
+    return L4Err.isWrapperFor(iface, this);
   }
 
 }

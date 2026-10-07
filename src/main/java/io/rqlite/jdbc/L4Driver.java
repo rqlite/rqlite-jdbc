@@ -10,6 +10,7 @@ import java.sql.*;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 import java.util.logging.Logger;
 
 import static io.rqlite.jdbc.L4Err.*;
@@ -162,67 +163,44 @@ public class L4Driver implements Driver {
     }
   }
 
+  private static final class Prop {
+    final String key;
+    final String description;
+    final Supplier<String> defaultValue;
+
+    Prop(String key, String description, Supplier<String> defaultValue) {
+      this.key = key;
+      this.description = description;
+      this.defaultValue = defaultValue;
+    }
+  }
+
   @Override public DriverPropertyInfo[] getPropertyInfo(String url, Properties info) {
     var mergedProps = mergeProperties(info, new HashMap<>());
-    var defaults = new L4Options();
-    var props = new DriverPropertyInfo[14];
-
-    props[0] = new DriverPropertyInfo(kUser, mergedProps.getProperty(kUser));
-    props[0].description = "Username for rqlite authentication";
-    props[0].required = false;
-
-    props[1] = new DriverPropertyInfo(kPassword, mergedProps.getProperty(kPassword));
-    props[1].description = "Password for rqlite authentication";
-    props[1].required = false;
-
-    props[2] = new DriverPropertyInfo(kTimeoutSec, mergedProps.getProperty(kTimeoutSec, String.valueOf(defaults.timeoutSec)));
-    props[2].description = "Timeout in seconds";
-    props[2].required = false;
-
-    props[3] = new DriverPropertyInfo(kQueue, mergedProps.getProperty(kQueue, String.valueOf(defaults.queue)));
-    props[3].description = "Enable queue mode";
-    props[3].required = false;
-
-    props[4] = new DriverPropertyInfo(kWait, mergedProps.getProperty(kWait, String.valueOf(defaults.wait)));
-    props[4].description = "Enable wait mode";
-    props[4].required = false;
-
-    props[5] = new DriverPropertyInfo(kLevel, mergedProps.getProperty(kLevel, defaults.level.toString()));
-    props[5].description = "Consistency level (none, weak, linearizable)";
-    props[5].required = false;
-
-    props[6] = new DriverPropertyInfo(kLinearizableTimeoutSec, mergedProps.getProperty(kLinearizableTimeoutSec, String.valueOf(defaults.linearizableTimeoutSec)));
-    props[6].description = "Linearizable timeout in seconds";
-    props[6].required = false;
-
-    props[7] = new DriverPropertyInfo(kFreshnessSec, mergedProps.getProperty(kFreshnessSec, String.valueOf(defaults.freshnessSec)));
-    props[7].description = "Freshness in seconds";
-    props[7].required = false;
-
-    props[8] = new DriverPropertyInfo(kFreshnessStrict, mergedProps.getProperty(kFreshnessStrict, String.valueOf(defaults.freshnessStrict)));
-    props[8].description = "Enable strict freshness";
-    props[8].required = false;
-
-    props[9] = new DriverPropertyInfo(kCaCert, mergedProps.getProperty(kCaCert));
-    props[9].description = "Path to CA certificate for HTTPS connections";
-    props[9].required = false;
-
-    props[10] = new DriverPropertyInfo(kRetries, mergedProps.getProperty(kRetries, String.valueOf(defaults.retries)));
-    props[10].description = "Number of request-forwarding retries";
-    props[10].required = false;
-
-    props[11] = new DriverPropertyInfo(kRedirect, mergedProps.getProperty(kRedirect, String.valueOf(defaults.redirect)));
-    props[11].description = "Follow rqlite leader redirects (HTTP 301)";
-    props[11].required = false;
-
-    props[12] = new DriverPropertyInfo(kClientCert, mergedProps.getProperty(kClientCert));
-    props[12].description = "Path to PEM client certificate for mTLS";
-    props[12].required = false;
-
-    props[13] = new DriverPropertyInfo(kClientKey, mergedProps.getProperty(kClientKey));
-    props[13].description = "Path to unencrypted PKCS#8 PEM client key for mTLS";
-    props[13].required = false;
-
+    var d = new L4Options();
+    var defs = new Prop[] {
+      new Prop(kUser, "Username for rqlite authentication", () -> null),
+      new Prop(kPassword, "Password for rqlite authentication", () -> null),
+      new Prop(kTimeoutSec, "Timeout in seconds", () -> String.valueOf(d.timeoutSec)),
+      new Prop(kQueue, "Enable queue mode", () -> String.valueOf(d.queue)),
+      new Prop(kWait, "Enable wait mode", () -> String.valueOf(d.wait)),
+      new Prop(kLevel, "Consistency level (none, weak, strong, linearizable)", () -> d.level.toString()),
+      new Prop(kLinearizableTimeoutSec, "Linearizable timeout in seconds", () -> String.valueOf(d.linearizableTimeoutSec)),
+      new Prop(kFreshnessSec, "Freshness in seconds", () -> String.valueOf(d.freshnessSec)),
+      new Prop(kFreshnessStrict, "Enable strict freshness", () -> String.valueOf(d.freshnessStrict)),
+      new Prop(kCaCert, "Path to CA certificate for HTTPS connections", () -> null),
+      new Prop(kRetries, "Number of request-forwarding retries", () -> String.valueOf(d.retries)),
+      new Prop(kRedirect, "Follow rqlite leader redirects (HTTP 301)", () -> String.valueOf(d.redirect)),
+      new Prop(kClientCert, "Path to PEM client certificate for mTLS", () -> null),
+      new Prop(kClientKey, "Path to unencrypted PKCS#8 PEM client key for mTLS", () -> null)
+    };
+    var props = new DriverPropertyInfo[defs.length];
+    for (int i = 0; i < defs.length; i++) {
+      var def = defs[i];
+      props[i] = new DriverPropertyInfo(def.key, mergedProps.getProperty(def.key, def.defaultValue.get()));
+      props[i].description = def.description;
+      props[i].required = false;
+    }
     return props;
   }
 

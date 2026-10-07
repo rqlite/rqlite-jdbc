@@ -130,9 +130,51 @@ public class L4Db {
     )).first();
   }
 
+  public static String emptyResultSql(String columns) {
+    return "SELECT * FROM (" + columns + ") WHERE 1 = 0";
+  }
+
+  public static final String FK_EMPTY_COLUMNS =
+    "SELECT NULL AS PKTABLE_CAT, NULL AS PKTABLE_SCHEM, NULL AS PKTABLE_NAME, NULL AS PKCOLUMN_NAME, " +
+    "NULL AS FKTABLE_CAT, NULL AS FKTABLE_SCHEM, NULL AS FKTABLE_NAME, NULL AS FKCOLUMN_NAME, " +
+    "0 AS KEY_SEQ, 0 AS UPDATE_RULE, 0 AS DELETE_RULE, " +
+    "NULL AS FK_NAME, NULL AS PK_NAME, 0 AS DEFERRABILITY";
+
+  public static L4Result emptyResult(L4Client client, String[] types, String columns) {
+    return client.querySingle(emptyResultSql(columns)).first().setTypes(types);
+  }
+
+  private static void addFkRow(L4Result out, String pkTable, String pkCol, String fkTable, String fkCol,
+                               String seq, String onDelete) {
+    var updateRule = itoa(DatabaseMetaData.importedKeyNoAction);
+    var deleteRule = itoa(
+      onDelete != null && onDelete.equals(CASCADE)
+        ? DatabaseMetaData.importedKeyCascade
+        : DatabaseMetaData.importedKeyNoAction
+    );
+    out.addRow(
+      Main, null, pkTable, pkCol,
+      Main, null, fkTable, fkCol,
+      seq, updateRule, deleteRule,
+      format("FK_%s_%s", fkTable, fkCol),
+      format("PK_%s", pkTable),
+      itoa(DatabaseMetaData.importedKeyInitiallyDeferred)
+    );
+  }
+
+  private static List<List<String>> primaryKeyColumns(L4Result allColumns, String table) {
+    var pkCols = new ArrayList<List<String>>();
+    for (var c : groupBy(allColumns, TABLE_NAME).getOrDefault(table, List.of())) {
+      if (atoi(allColumns.get(kPk, c)) > 0) {
+        pkCols.add(c);
+      }
+    }
+    pkCols.sort(Comparator.comparingInt(c -> atoi(allColumns.get(kPk, c))));
+    return pkCols;
+  }
+
   public static L4Result dbGetCatalogs(L4Client client) {
-    var res = checkResult(client.querySingle("SELECT * from (SELECT NULL TABLE_CAT) WHERE 1 = 0").first());
-    var out = res.setTypes(RQ_VARCHAR);
+    var out = emptyResult(client, new String[]{RQ_VARCHAR}, "SELECT NULL TABLE_CAT");
     out.addRow(Main);
     return out;
   }
@@ -180,31 +222,25 @@ public class L4Db {
   }
 
   public static L4Result dbGetTableTypes(L4Client client) {
-    return client
-      .querySingle("SELECT * FROM (SELECT NULL TABLE_TYPE) WHERE 1 = 0")
-      .first().setTypes(RQ_VARCHAR)
+    return emptyResult(client, new String[]{RQ_VARCHAR}, "SELECT NULL TABLE_TYPE")
       .addRow(TABLE).addRow(VIEW);
   }
 
   public static L4Result dbGetColumns(String tableNamePattern, String columnNamePattern, L4Client client) {
-    var out = client.querySingle(join("\n", "",
-      "SELECT * FROM (",
-      "  SELECT NULL AS TABLE_CAT, NULL AS TABLE_SCHEM, NULL AS TABLE_NAME, ",
-      "         NULL COLUMN_NAME, 0 AS DATA_TYPE, NULL TYPE_NAME, 0 AS COLUMN_SIZE, ",
-      "         0 AS BUFFER_LENGTH, 0 AS DECIMAL_DIGITS, 0 AS NUM_PREC_RADIX, 0 AS NULLABLE, ",
-      "         NULL REMARKS, NULL COLUMN_DEF, 0 AS SQL_DATA_TYPE, 0 AS SQL_DATETIME_SUB, ",
-      "         0 AS CHAR_OCTET_LENGTH, 0 AS ORDINAL_POSITION, NULL IS_NULLABLE, NULL SCOPE_CATALOG, ",
-      "         NULL SCOPE_SCHEMA, NULL SCOPE_TABLE, 0 AS SOURCE_DATA_TYPE, NULL IS_AUTOINCREMENT, ",
-      "         NULL IS_GENERATEDCOLUMN",
-      ") WHERE 1 = 0"
-    )).first().setTypes(
+    var out = emptyResult(client, new String[]{
       RQ_VARCHAR, RQ_VARCHAR, RQ_VARCHAR, RQ_VARCHAR,
       RQ_INTEGER, RQ_VARCHAR, RQ_INTEGER, RQ_INTEGER,
       RQ_INTEGER, RQ_INTEGER, RQ_INTEGER, RQ_VARCHAR,
       RQ_VARCHAR, RQ_INTEGER, RQ_INTEGER, RQ_INTEGER,
       RQ_INTEGER, RQ_VARCHAR, RQ_VARCHAR, RQ_VARCHAR,
       RQ_VARCHAR, RQ_INTEGER, RQ_VARCHAR, RQ_VARCHAR
-    );
+    }, "SELECT NULL AS TABLE_CAT, NULL AS TABLE_SCHEM, NULL AS TABLE_NAME, " +
+       "NULL COLUMN_NAME, 0 AS DATA_TYPE, NULL TYPE_NAME, 0 AS COLUMN_SIZE, " +
+       "0 AS BUFFER_LENGTH, 0 AS DECIMAL_DIGITS, 0 AS NUM_PREC_RADIX, 0 AS NULLABLE, " +
+       "NULL REMARKS, NULL COLUMN_DEF, 0 AS SQL_DATA_TYPE, 0 AS SQL_DATETIME_SUB, " +
+       "0 AS CHAR_OCTET_LENGTH, 0 AS ORDINAL_POSITION, NULL IS_NULLABLE, NULL SCOPE_CATALOG, " +
+       "NULL SCOPE_SCHEMA, NULL SCOPE_TABLE, 0 AS SOURCE_DATA_TYPE, NULL IS_AUTOINCREMENT, " +
+       "NULL IS_GENERATEDCOLUMN");
 
     // Get all tables matching tableNamePattern
     var tables = dbGetTables(tableNamePattern, new String[] {TABLE, VIEW}, client);
@@ -254,27 +290,16 @@ public class L4Db {
   }
 
   public static L4Result dbGetPrimaryKeys(String tablePattern, L4Client client) {
-    var out = client.querySingle(join("\n", "",
-      "SELECT * FROM (",
-      "  SELECT NULL AS TABLE_CAT, NULL AS TABLE_SCHEM, ",
-      "         NULL AS TABLE_NAME, NULL AS COLUMN_NAME, 0 AS KEY_SEQ, NULL AS PK_NAME",
-      ") WHERE 1 = 0"
-    )).first().setTypes(
+    var out = emptyResult(client, new String[]{
       RQ_VARCHAR, RQ_VARCHAR, RQ_VARCHAR,
       RQ_VARCHAR, RQ_INTEGER, RQ_VARCHAR
-    );
+    }, "SELECT NULL AS TABLE_CAT, NULL AS TABLE_SCHEM, " +
+       "NULL AS TABLE_NAME, NULL AS COLUMN_NAME, 0 AS KEY_SEQ, NULL AS PK_NAME");
     var tables = tablePattern.equals(All) ? dbUserTables(client) : List.of(tablePattern);
     var allColumns = dbAllColumns(client);
-    var columnsByTable = groupBy(allColumns, TABLE_NAME);
     for (var table : tables) {
       var tab = quote(table);
-      var pkCols = new ArrayList<List<String>>();
-      for (var c : columnsByTable.getOrDefault(table, List.of())) {
-        if (atoi(allColumns.get(kPk, c)) > 0) {
-          pkCols.add(c);
-        }
-      }
-      pkCols.sort(Comparator.comparingInt(c -> atoi(allColumns.get(kPk, c))));
+      var pkCols = primaryKeyColumns(allColumns, table);
       var keySeq = 1;
       for (var c : pkCols) {
         out.addRow(
@@ -289,17 +314,13 @@ public class L4Db {
 
   public static L4Result dbGetBestRowIdentifier(String table, boolean nullable, L4Client client) {
     // Use primary key columns as best row identifier
-    var out = client.querySingle(join("\n", "",
-      "SELECT * FROM (",
-      "  SELECT 0 AS SCOPE, NULL AS COLUMN_NAME, ",
-      "         0 AS DATA_TYPE, NULL AS TYPE_NAME, 0 AS COLUMN_SIZE, ",
-      "         0 AS BUFFER_LENGTH, 0 AS DECIMAL_DIGITS, 0 AS PSEUDO_COLUMN",
-      ") WHERE 1 = 0"
-    )).first().setTypes(
+    var out = emptyResult(client, new String[]{
       RQ_INTEGER, RQ_VARCHAR, RQ_INTEGER,
       RQ_VARCHAR, RQ_INTEGER, RQ_INTEGER,
       RQ_INTEGER, RQ_INTEGER
-    );
+    }, "SELECT 0 AS SCOPE, NULL AS COLUMN_NAME, " +
+       "0 AS DATA_TYPE, NULL AS TYPE_NAME, 0 AS COLUMN_SIZE, " +
+       "0 AS BUFFER_LENGTH, 0 AS DECIMAL_DIGITS, 0 AS PSEUDO_COLUMN");
     var pkRs = dbGetPrimaryKeys(table, client);
     var colRs = dbGetColumns(table, null, client);
     pkRs.forEach((i, pkr) -> {
@@ -325,105 +346,51 @@ public class L4Db {
   }
 
   public static L4Result dbGetImportedKeys(String tablePattern, L4Client client) {
-    var out = client.querySingle(join("\n", "",
-      "SELECT * FROM (",
-      "  SELECT NULL AS PKTABLE_CAT, NULL AS PKTABLE_SCHEM, NULL AS PKTABLE_NAME, NULL AS PKCOLUMN_NAME, ",
-      "         NULL AS FKTABLE_CAT, NULL AS FKTABLE_SCHEM, NULL AS FKTABLE_NAME, NULL AS FKCOLUMN_NAME, ",
-      "         0 AS KEY_SEQ, 0 AS UPDATE_RULE, 0 AS DELETE_RULE, ",
-      "         NULL AS FK_NAME, NULL AS PK_NAME, 0 AS DEFERRABILITY",
-      ") WHERE 1 = 0"
-    )).first().setTypes(
+    var out = emptyResult(client, new String[]{
       RQ_VARCHAR, RQ_VARCHAR, RQ_VARCHAR, RQ_VARCHAR,
       RQ_VARCHAR, RQ_VARCHAR, RQ_VARCHAR, RQ_VARCHAR,
       RQ_INTEGER, RQ_INTEGER, RQ_INTEGER,
       RQ_VARCHAR, RQ_VARCHAR, RQ_INTEGER
-    );
+    }, FK_EMPTY_COLUMNS);
     var tables = tablePattern.equals(All) ? dbUserTables(client) : List.of(tablePattern);
     var allFks = dbAllForeignKeys(client);
     var fksByTable = groupBy(allFks, TABLE_NAME);
     for (var table : tables) {
       var fkTable = quote(table);
       for (var row : fksByTable.getOrDefault(table, List.of())) {
-        var seq = Integer.toString(Integer.parseInt(allFks.get(kSeq, row)) + 1);
-        var fkCol = allFks.get(kFrom, row);
-        var pkCol = allFks.get(kTo, row);
-        var pkTable = allFks.get(kTable, row);
-        var onDelete = allFks.get(kOnDelete, row);
-        var updateRule = itoa(DatabaseMetaData.importedKeyNoAction);
-        var deleteRule = itoa(
-          onDelete != null && onDelete.equals(CASCADE)
-            ? DatabaseMetaData.importedKeyCascade
-            : DatabaseMetaData.importedKeyNoAction
-        );
-        out.addRow(
-          Main, null, pkTable, pkCol,
-          Main, null, fkTable, fkCol,
-          seq, updateRule, deleteRule,
-          format("FK_%s_%s", fkTable, fkCol),
-          format("PK_%s", pkTable),
-          itoa(DatabaseMetaData.importedKeyInitiallyDeferred)
-        );
+        addFkRow(out, allFks.get(kTable, row), allFks.get(kTo, row), fkTable, allFks.get(kFrom, row),
+          Integer.toString(Integer.parseInt(allFks.get(kSeq, row)) + 1), allFks.get(kOnDelete, row));
       }
     }
     return out;
   }
 
   public static L4Result dbGetExportedKeys(String table, L4Client client) {
-    var out = client.querySingle(join("\n", "",
-      "SELECT * FROM (",
-      "  SELECT NULL AS PKTABLE_CAT, NULL AS PKTABLE_SCHEM, NULL AS PKTABLE_NAME, NULL AS PKCOLUMN_NAME, ",
-      "         NULL AS FKTABLE_CAT, NULL AS FKTABLE_SCHEM, NULL AS FKTABLE_NAME, NULL AS FKCOLUMN_NAME, ",
-      "         0 AS KEY_SEQ, 0 AS UPDATE_RULE, 0 AS DELETE_RULE, ",
-      "         NULL AS FK_NAME, NULL AS PK_NAME, 0 AS DEFERRABILITY",
-      ") WHERE 1 = 0"
-    )).first().setTypes(
+    var out = emptyResult(client, new String[]{
       RQ_VARCHAR, RQ_VARCHAR, RQ_VARCHAR, RQ_VARCHAR,
       RQ_VARCHAR, RQ_VARCHAR, RQ_VARCHAR, RQ_VARCHAR,
       RQ_SMALLINT, RQ_SMALLINT, RQ_SMALLINT,
       RQ_VARCHAR, RQ_VARCHAR, RQ_INTEGER
-    );
+    }, FK_EMPTY_COLUMNS);
     // Find all tables with foreign keys referencing this table
     var allFks = dbAllForeignKeys(client);
     allFks.forEach((i, row0) -> {
       if (table.equals(allFks.get(kTable, row0))) {
         var fkTable = quote(allFks.get(TABLE_NAME, row0));
-        var seq = itoa(atoi(allFks.get(kSeq, row0)) + 1);
-        var fkCol = allFks.get(kFrom, row0);
-        var pkCol = allFks.get(kTo, row0);
-        var onDelete = allFks.get(kOnDelete, row0);
-        var updateRule = itoa(DatabaseMetaData.importedKeyNoAction);
-        var deleteRule = itoa(
-          onDelete != null && onDelete.equals(CASCADE)
-            ? DatabaseMetaData.importedKeyCascade
-            : DatabaseMetaData.importedKeyNoAction
-        );
-        out.addRow(
-          Main, null, table, pkCol,
-          Main, null, fkTable, fkCol,
-          seq, updateRule, deleteRule,
-          format("FK_%s_%s", fkTable, fkCol),
-          format("PK_%s", table),
-          itoa(DatabaseMetaData.importedKeyInitiallyDeferred)
-        );
+        addFkRow(out, table, allFks.get(kTo, row0), fkTable, allFks.get(kFrom, row0),
+          itoa(atoi(allFks.get(kSeq, row0)) + 1), allFks.get(kOnDelete, row0));
       }
     });
     return out;
   }
 
   public static L4Result dbGetCrossReference(String parentTable, String foreignTable, L4Client client) {
-    var out = client.querySingle(join("\n", "",
-      "SELECT * FROM (",
-      "  SELECT NULL AS PKTABLE_CAT, NULL AS PKTABLE_SCHEM, NULL AS PKTABLE_NAME, NULL AS PKCOLUMN_NAME, ",
-      "         NULL AS FKTABLE_CAT, NULL AS FKTABLE_SCHEM, NULL AS FKTABLE_NAME, NULL AS FKCOLUMN_NAME, ",
-      "         0 AS KEY_SEQ, 0 AS UPDATE_RULE, 0 AS DELETE_RULE, ",
-      "         NULL AS FK_NAME, NULL AS PK_NAME, 0 AS DEFERRABILITY",
-      ") WHERE 1 = 0"
-    )).first().setTypes(
+    var out = emptyResult(client, new String[]{
       RQ_VARCHAR, RQ_VARCHAR, RQ_VARCHAR, RQ_VARCHAR,
       RQ_VARCHAR, RQ_VARCHAR, RQ_VARCHAR, RQ_VARCHAR,
       RQ_SMALLINT, RQ_SMALLINT, RQ_SMALLINT,
       RQ_VARCHAR, RQ_VARCHAR, RQ_SMALLINT
-    );
+    }, FK_EMPTY_COLUMNS);
     var fkRs = dbGetImportedKeys(foreignTable, client);
     fkRs.forEach((i, row) -> {
       var pkTable = fkRs.get(PKTABLE_NAME, row);
@@ -444,17 +411,7 @@ public class L4Db {
   }
 
   public static L4Result dbGetTypeInfo(L4Client client) {
-    var out = client.querySingle(join("\n", "",
-      "SELECT * FROM (",
-      "  SELECT NULL AS TYPE_NAME, 0 AS DATA_TYPE, 0 AS PRECISION, ",
-      "         NULL AS LITERAL_PREFIX, NULL AS LITERAL_SUFFIX, ",
-      "         NULL AS CREATE_PARAMS, 0 AS NULLABLE, FALSE AS CASE_SENSITIVE, ",
-      "         0 AS SEARCHABLE, FALSE AS UNSIGNED_ATTRIBUTE, FALSE AS FIXED_PREC_SCALE, ",
-      "         FALSE AS AUTO_INCREMENT, NULL AS LOCAL_TYPE_NAME, 0 AS MINIMUM_SCALE, ",
-      "         0 AS MAXIMUM_SCALE, 0 AS SQL_DATA_TYPE, 0 AS SQL_DATETIME_SUB, ",
-      "         0 AS NUM_PREC_RADIX",
-      ") WHERE 1 = 0"
-    )).first().setTypes(
+    var out = emptyResult(client, new String[]{
       RQ_VARCHAR, RQ_INTEGER, RQ_INTEGER,
       RQ_VARCHAR, RQ_VARCHAR,
       RQ_VARCHAR, RQ_SMALLINT, RQ_BOOLEAN,
@@ -462,7 +419,13 @@ public class L4Db {
       RQ_BOOLEAN, RQ_VARCHAR, RQ_SMALLINT,
       RQ_SMALLINT, RQ_INTEGER, RQ_INTEGER,
       RQ_INTEGER
-    );
+    }, "SELECT NULL AS TYPE_NAME, 0 AS DATA_TYPE, 0 AS PRECISION, " +
+       "NULL AS LITERAL_PREFIX, NULL AS LITERAL_SUFFIX, " +
+       "NULL AS CREATE_PARAMS, 0 AS NULLABLE, FALSE AS CASE_SENSITIVE, " +
+       "0 AS SEARCHABLE, FALSE AS UNSIGNED_ATTRIBUTE, FALSE AS FIXED_PREC_SCALE, " +
+       "FALSE AS AUTO_INCREMENT, NULL AS LOCAL_TYPE_NAME, 0 AS MINIMUM_SCALE, " +
+       "0 AS MAXIMUM_SCALE, 0 AS SQL_DATA_TYPE, 0 AS SQL_DATETIME_SUB, " +
+       "0 AS NUM_PREC_RADIX");
     for (var rqt : RQ_TYPES) {
       var jt = getJdbcType(rqt);
       var hasPrefix = anyOf(jt, Types.VARCHAR, Types.DATE, Types.TIME, Types.TIMESTAMP, Types.DATALINK, Types.NVARCHAR);
@@ -480,33 +443,22 @@ public class L4Db {
   }
 
   public static L4Result dbGetIndexInfo(String tablePattern, boolean unique, L4Client client) {
-    var out = client.querySingle(join("\n", "",
-      "SELECT * FROM (",
-      "  SELECT NULL AS TABLE_CAT, NULL AS TABLE_SCHEM, NULL AS TABLE_NAME, ",
-      "         FALSE AS NON_UNIQUE, NULL AS INDEX_QUALIFIER, NULL AS INDEX_NAME, 0 AS TYPE, ",
-      "         0 AS ORDINAL_POSITION, NULL AS COLUMN_NAME, NULL AS ASC_OR_DESC, 0 AS CARDINALITY, ",
-      "         0 AS PAGES, NULL AS FILTER_CONDITION",
-      ") WHERE 1 = 0"
-    )).first().setTypes(
+    var out = emptyResult(client, new String[]{
       RQ_VARCHAR, RQ_VARCHAR, RQ_VARCHAR,
       RQ_BOOLEAN, RQ_VARCHAR, RQ_VARCHAR, RQ_SMALLINT,
       RQ_INTEGER, RQ_VARCHAR, RQ_VARCHAR, RQ_BIGINT,
       RQ_BIGINT, RQ_VARCHAR
-    );
+    }, "SELECT NULL AS TABLE_CAT, NULL AS TABLE_SCHEM, NULL AS TABLE_NAME, " +
+       "FALSE AS NON_UNIQUE, NULL AS INDEX_QUALIFIER, NULL AS INDEX_NAME, 0 AS TYPE, " +
+       "0 AS ORDINAL_POSITION, NULL AS COLUMN_NAME, NULL AS ASC_OR_DESC, 0 AS CARDINALITY, " +
+       "0 AS PAGES, NULL AS FILTER_CONDITION");
     var tables = tablePattern.equals(All) ? dbUserTables(client) : List.of(tablePattern);
     var allColumns = dbAllColumns(client);
-    var columnsByTable = groupBy(allColumns, TABLE_NAME);
     var allIndexCols = dbAllIndexColumns(client);
     var indexColsByTable = groupBy(allIndexCols, TABLE_NAME);
     for (var table : tables) {
       var seq = 1;
-      var pkCols = new ArrayList<List<String>>();
-      for (var c : columnsByTable.getOrDefault(table, List.of())) {
-        if (atoi(allColumns.get(kPk, c)) > 0) {
-          pkCols.add(c);
-        }
-      }
-      pkCols.sort(Comparator.comparingInt(c -> atoi(allColumns.get(kPk, c))));
+      var pkCols = primaryKeyColumns(allColumns, table);
       for (var c : pkCols) {
         out.addRow(
           Main, null, table,

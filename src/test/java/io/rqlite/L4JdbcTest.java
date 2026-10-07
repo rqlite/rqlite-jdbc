@@ -548,6 +548,13 @@ public class L4JdbcTest {
       assertEquals("SELECT * FROM [weird;table]", result8[0].sql);
       assertEquals("SELECT `back;tick` FROM t", result8[1].sql);
 
+      // Test escaped quotes inside string literals must not split
+      var sql9 = "SELECT 'a'';''b' AS v; SELECT 2";
+      var result9 = split(sql9);
+      assertEquals(2, result9.length);
+      assertEquals("SELECT 'a'';''b' AS v", result9[0].sql);
+      assertEquals("SELECT 2", result9[1].sql);
+
       // Test null input
       try {
         split(null);

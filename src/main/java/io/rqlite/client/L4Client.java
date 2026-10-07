@@ -68,18 +68,24 @@ public class L4Client implements Closeable {
     return loc == null || loc.isEmpty() ? null : loc;
   }
 
-  private HttpResponse<String> doPostRequest(String url, String body) {
+  private HttpResponse<String> send(String method, String url, String body) {
     var currentUrl = url;
     var statusCode = -1;
     try {
       for (int hop = 0; ; hop++) {
-        L4Log.trace("{} - POST {}", this, body);
+        if (body != null) {
+          L4Log.trace("{} - {} {}", this, method, body);
+        }
         var builder = HttpRequest.newBuilder().uri(URI.create(currentUrl));
         if (options.timeoutSec > 0) {
           builder.timeout(Duration.ofSeconds(options.timeoutSec));
         }
-        builder.method("POST", HttpRequest.BodyPublishers.ofString(body));
-        builder.header("Content-Type", "application/json");
+        if (body != null) {
+          builder.method(method, HttpRequest.BodyPublishers.ofString(body));
+          builder.header("Content-Type", "application/json");
+        } else {
+          builder.method(method, HttpRequest.BodyPublishers.noBody());
+        }
         addBasicAuth(builder);
         var res = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
         statusCode = res.statusCode();
@@ -90,8 +96,12 @@ public class L4Client implements Closeable {
         currentUrl = next;
       }
     } catch (Exception e) {
-      throw new IllegalStateException(format("HTTP POST error: (%d) [%s]", statusCode, currentUrl), e);
+      throw new IllegalStateException(format("HTTP %s error: (%d) [%s]", method, statusCode, currentUrl), e);
     }
+  }
+
+  private HttpResponse<String> doPostRequest(String url, String body) {
+    return send("POST", url, body);
   }
 
   private HttpResponse<String> doJSONPostRequest(String url, String body) {
@@ -99,26 +109,7 @@ public class L4Client implements Closeable {
   }
 
   private HttpResponse<String> doGetRequest(String url) {
-    var currentUrl = url;
-    var statusCode = -1;
-    try {
-      for (int hop = 0; ; hop++) {
-        var builder = HttpRequest.newBuilder().uri(URI.create(currentUrl)).GET();
-        addBasicAuth(builder);
-        if (options.timeoutSec > 0) {
-          builder.timeout(Duration.ofSeconds(options.timeoutSec));
-        }
-        var res = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
-        statusCode = res.statusCode();
-        var next = redirectTarget(res, hop);
-        if (next == null) {
-          return checkResponse(res);
-        }
-        currentUrl = next;
-      }
-    } catch (Exception e) {
-      throw new IllegalStateException(format("HTTP GET error: (%d) [%s]", statusCode, currentUrl), e);
-    }
+    return send("GET", url, null);
   }
 
   private void addBasicAuth(HttpRequest.Builder builder) {

@@ -880,7 +880,7 @@ public class L4PsTest {
           ps.setObject(1, "test", Types.ARRAY, 0);
           fail("Expected SQLException for unsupported SQL type");
         } catch (SQLException e) {
-          assertEquals(SqlStateInvalidColumn, e.getSQLState());
+          assertEquals(SqlStateInvalidParam, e.getSQLState());
         }
 
         // Test invalid parameter conversion
@@ -888,7 +888,7 @@ public class L4PsTest {
           ps.setObject(1, "invalid", Types.NUMERIC, 2); // Invalid numeric string
           fail("Expected SQLException for invalid conversion");
         } catch (SQLException e) {
-          assertEquals(SqlStateInvalidColumn, e.getSQLState());
+          assertEquals(SqlStateInvalidParam, e.getSQLState());
         }
 
         ps.close();

@@ -7,11 +7,10 @@ import java.sql.*;
 
 import static io.rqlite.jdbc.L4Err.*;
 
-public class L4Clob implements Clob {
+public class L4Clob extends L4Lob implements Clob {
 
   private StringBuilder data;
   private SerialClob serialClob;
-  private boolean isClosed = false;
 
   public L4Clob() throws SQLException {
     this.data = new StringBuilder();
@@ -19,9 +18,7 @@ public class L4Clob implements Clob {
   }
 
   private void checkClosed() throws SQLException {
-    if (isClosed) {
-      throw generalError("Clob is closed");
-    }
+    checkClosed("Clob");
   }
 
   private void updateSerialClob() throws SQLException {
@@ -118,13 +115,10 @@ public class L4Clob implements Clob {
     updateSerialClob();
   }
 
-  @Override public void free() throws SQLException {
-    if (!isClosed) {
-      data = null;
-      serialClob.free();
-      serialClob = null;
-      isClosed = true;
-    }
+  @Override protected void release() throws SQLException {
+    data = null;
+    serialClob.free();
+    serialClob = null;
   }
 
 }
