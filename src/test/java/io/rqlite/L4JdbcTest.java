@@ -556,5 +556,24 @@ public class L4JdbcTest {
         assertNotNull(e.getMessage());
       }
     });
+
+    it("Scans prepared statement placeholders", () -> {
+      assertEquals(2, positionalParameterCount(scanPlaceholders("SELECT * FROM t WHERE a = ? AND b = ?")));
+
+      // Placeholders inside strings, comments and quoted identifiers are ignored
+      assertEquals(1, positionalParameterCount(scanPlaceholders(
+        "SELECT * FROM t WHERE a = '?' AND b = ? -- ?\n")));
+      assertEquals(0, positionalParameterCount(scanPlaceholders(
+        "SELECT * FROM [weird?table] WHERE a = 'no'")));
+
+      // Explicit numeric placeholders (?3 then a plain ? becomes index 4)
+      assertEquals(4, positionalParameterCount(scanPlaceholders("SELECT * FROM t WHERE a = ?3 AND b = ?")));
+
+      // Named placeholders
+      var named = scanPlaceholders("SELECT * FROM t WHERE a = :name AND b = @other AND c = $third");
+      assertEquals(0, positionalParameterCount(named));
+      assertEquals(3, namedParameterNames(named).size());
+      assertEquals("name", namedParameterNames(named).get(0));
+    });
   }
 }

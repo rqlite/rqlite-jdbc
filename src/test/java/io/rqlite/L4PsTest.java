@@ -894,6 +894,43 @@ public class L4PsTest {
         ps.close();
         selectPs.close();
       });
+
+      it("Reports prepared statement parameter metadata from SQL", () -> {
+        setupPreparedStatementTestTable(rq);
+
+        var insert = new L4Ps(rq,
+          "INSERT INTO ps_test_data (num_val, text_val, bool_val, blob_val) VALUES (?, ?, ?, ?)");
+        var pm = insert.getParameterMetaData();
+        assertEquals(4, pm.getParameterCount());
+        assertEquals(Types.NUMERIC, pm.getParameterType(1));
+        assertEquals(Types.VARCHAR, pm.getParameterType(2));
+        assertEquals(Types.BOOLEAN, pm.getParameterType(3));
+        assertEquals(Types.BLOB, pm.getParameterType(4));
+
+        var select = new L4Ps(rq,
+          "SELECT * FROM ps_test_data WHERE int_val = ? AND text_val = ?");
+        var pm2 = select.getParameterMetaData();
+        assertEquals(2, pm2.getParameterCount());
+        assertEquals(Types.INTEGER, pm2.getParameterType(1));
+        assertEquals(Types.VARCHAR, pm2.getParameterType(2));
+
+        var update = new L4Ps(rq,
+          "UPDATE ps_test_data SET num_val = ? WHERE id = ?");
+        var pm3 = update.getParameterMetaData();
+        assertEquals(2, pm3.getParameterCount());
+        assertEquals(Types.NUMERIC, pm3.getParameterType(1));
+        assertEquals(Types.INTEGER, pm3.getParameterType(2));
+
+        // ResultSetMetaData can be obtained before parameters are bound
+        var probe = new L4Ps(rq, "SELECT int_val, text_val FROM ps_test_data WHERE id = ?");
+        var md = probe.getMetaData();
+        assertEquals(2, md.getColumnCount());
+
+        insert.close();
+        select.close();
+        update.close();
+        probe.close();
+      });
     }
   }
 }

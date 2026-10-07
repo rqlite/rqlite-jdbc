@@ -155,6 +155,10 @@ rqlite reports statement errors inside an HTTP 200 response. The driver surfaces
 
 `Statement.getGeneratedKeys()` returns the rqlite `last_insert_id` from the most recent write (a single `last_insert_id` column), and `DatabaseMetaData.supportsGetGeneratedKeys()` reports `true`. `executeUpdate`/`execute` accept `RETURN_GENERATED_KEYS`.
 
+### Prepared Statement Parameter Metadata
+
+`ParameterMetaData.getParameterCount()` reflects the `?` placeholders in the SQL, and `PreparedStatement.getMetaData()` can be called before parameters are bound. Because SQLite is dynamically typed and exposes no parameter-type API, parameter *types* are not authoritative: the driver reports the declared type of the target column when it can be inferred from common `INSERT`/`UPDATE`/`SELECT` shapes, and `Types.OTHER` (unknown) otherwise — it no longer echoes whatever setter was used.
+
 ### Mutual TLS (mTLS)
 
 Set `clientCert` and `clientKey` to enable client-certificate authentication. The certificate is a PEM file; the private key must be an **unencrypted PKCS#8** PEM (`-----BEGIN PRIVATE KEY-----`). The optional `cacert` verifies the server; when omitted the JVM default trust store is used.

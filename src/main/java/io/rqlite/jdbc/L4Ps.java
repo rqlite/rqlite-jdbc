@@ -343,7 +343,14 @@ public class L4Ps extends L4St implements PreparedStatement {
   @Override public ResultSetMetaData getMetaData() throws SQLException {
     checkClosed();
     try {
-      return new L4RsMeta(checkResult(client.query(statement).first()));
+      // Probe with NULLs for every positional placeholder so metadata can be obtained
+      // before the caller has bound parameters (rqlite validates placeholder arity).
+      var count = positionalParameterCount(scanPlaceholders(statement.sql));
+      var probe = new L4Statement().sql(statement.sql);
+      for (int i = 0; i < count; i++) {
+        probe.withPositionalParam(i, null);
+      }
+      return new L4RsMeta(checkResult(client.query(probe).first()));
     } catch (Exception e) {
       throw badQuery(e);
     }
@@ -390,7 +397,7 @@ public class L4Ps extends L4St implements PreparedStatement {
 
   @Override public ParameterMetaData getParameterMetaData() throws SQLException {
     checkClosed();
-    return new L4PsPm(statement); // TODO possible enhancement for rqlite itself
+    return new L4PsPm(client, statement);
   }
 
   @Override public void setRowId(int parameterIndex, RowId x) throws SQLException {

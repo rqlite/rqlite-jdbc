@@ -723,6 +723,171 @@ public class L4Jdbc {
     return val.replace("'", "''");
   }
 
+  /**
+   * A prepared-statement placeholder discovered in SQL text.
+   */
+  public static final class Placeholder {
+    public final int index;   // 1-based positional index, or -1 for a named placeholder
+    public final String name; // named placeholder (without sigil), or null
+    public final int offset;  // character offset in the SQL text
+
+    Placeholder(int index, String name, int offset) {
+      this.index = index;
+      this.name = name;
+      this.offset = offset;
+    }
+
+    public boolean isNamed() {
+      return name != null;
+    }
+
+    @Override public String toString() {
+      return isNamed() ? ":" + name : "?" + index;
+    }
+  }
+
+  private static boolean isIdentChar(char c) {
+    return Character.isLetterOrDigit(c) || c == '_';
+  }
+
+  /**
+   * Scans SQL for SQLite parameter placeholders ({@code ?}, {@code ?NNN}, {@code :name},
+   * {@code @name}, {@code $name}), ignoring placeholders inside strings, comments and
+   * quoted identifiers.
+   */
+  public static List<Placeholder> scanPlaceholders(String rawSql) {
+    var out = new ArrayList<Placeholder>();
+    if (rawSql == null || rawSql.isEmpty()) {
+      return out;
+    }
+    int i = 0;
+    int n = rawSql.length();
+    int next = 1;
+    var inSingle = false;
+    var inDouble = false;
+    var inBracket = false;
+    var inBacktick = false;
+    var lineComment = false;
+    var blockComment = false;
+    while (i < n) {
+      char c = rawSql.charAt(i);
+      if (lineComment) {
+        if (c == '\n') {
+          lineComment = false;
+        }
+        i++;
+        continue;
+      }
+      if (blockComment) {
+        if (c == '*' && i + 1 < n && rawSql.charAt(i + 1) == '/') {
+          blockComment = false;
+          i += 2;
+        } else {
+          i++;
+        }
+        continue;
+      }
+      if (inSingle) {
+        if (c == '\'') {
+          if (i + 1 < n && rawSql.charAt(i + 1) == '\'') {
+            i += 2;
+          } else {
+            inSingle = false;
+            i++;
+          }
+        } else {
+          i++;
+        }
+        continue;
+      }
+      if (inDouble) {
+        if (c == '"') {
+          inDouble = false;
+        }
+        i++;
+        continue;
+      }
+      if (inBracket) {
+        if (c == ']') {
+          inBracket = false;
+        }
+        i++;
+        continue;
+      }
+      if (inBacktick) {
+        if (c == '`') {
+          inBacktick = false;
+        }
+        i++;
+        continue;
+      }
+      if (c == '\'') { inSingle = true; i++; continue; }
+      if (c == '"') { inDouble = true; i++; continue; }
+      if (c == '[') { inBracket = true; i++; continue; }
+      if (c == '`') { inBacktick = true; i++; continue; }
+      if (c == '-' && i + 1 < n && rawSql.charAt(i + 1) == '-') { lineComment = true; i += 2; continue; }
+      if (c == '/' && i + 1 < n && rawSql.charAt(i + 1) == '*') { blockComment = true; i += 2; continue; }
+      if (c == '?') {
+        int start = i;
+        int j = i + 1;
+        int idx;
+        if (j < n && Character.isDigit(rawSql.charAt(j))) {
+          int k = j;
+          while (k < n && Character.isDigit(rawSql.charAt(k))) {
+            k++;
+          }
+          idx = Integer.parseInt(rawSql.substring(j, k));
+          next = idx + 1;
+          i = k;
+        } else {
+          idx = next++;
+          i++;
+        }
+        out.add(new Placeholder(idx, null, start));
+        continue;
+      }
+      if (c == ':' || c == '@' || c == '$') {
+        var prevIdent = i > 0 && isIdentChar(rawSql.charAt(i - 1));
+        int j = i + 1;
+        if (!prevIdent && j < n && isIdentChar(rawSql.charAt(j))) {
+          int k = j;
+          while (k < n && isIdentChar(rawSql.charAt(k))) {
+            k++;
+          }
+          out.add(new Placeholder(-1, rawSql.substring(j, k), i));
+          i = k;
+          continue;
+        }
+        i++;
+        continue;
+      }
+      i++;
+    }
+    return out;
+  }
+
+  /** Returns the highest positional placeholder index (0 if none). */
+  public static int positionalParameterCount(List<Placeholder> placeholders) {
+    int max = 0;
+    for (var p : placeholders) {
+      if (!p.isNamed() && p.index > max) {
+        max = p.index;
+      }
+    }
+    return max;
+  }
+
+  /** Returns the distinct named placeholders, in order of appearance. */
+  public static List<String> namedParameterNames(List<Placeholder> placeholders) {
+    var names = new ArrayList<String>();
+    for (var p : placeholders) {
+      if (p.isNamed() && !names.contains(p.name)) {
+        names.add(p.name);
+      }
+    }
+    return names;
+  }
+
   public static L4Statement[] split(String rawSql) {
     if (rawSql == null) {
       throw new IllegalArgumentException("SQL string cannot be null");
