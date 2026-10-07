@@ -103,7 +103,7 @@ These options come from `rqlite`'s [Developer Guide](https://rqlite.io/docs/api)
 | `retries`                   | `int`     | `0`                      | Number of rqlite request-forwarding retries.                                |
 | `redirect`                  | `boolean` | `false`                  | If `true`, follow rqlite leader redirects (HTTP 301) transparently.         |
 | `maxBatchStatements`        | `int`     | `0`                      | If `> 0`, `executeBatch` rejects batches larger than this (see Caveats).    |
-| `level`                     | `L4Level` | `L4Level.linearizable`   | Consistency level for queries (`none`, `weak`, `strong`, `linearizable`).   |
+| `level`                     | `L4Level` | `L4Level.linearizable`   | Consistency level for queries (`none`, `weak`, `strong`, `linearizable`, `auto`). |
 | `linearizableTimeoutSec`    | `long`    | `5`                      | Timeout for linearizable consistency queries in seconds.                    |
 | `freshnessSec`              | `long`    | `5`                      | Maximum age of data for freshness-based queries in seconds.                 |
 | `freshnessStrict`           | `boolean` | `false`                  | If `true`, enforces strict freshness for queries.                           |
@@ -201,9 +201,26 @@ The only guarantee is that if `commit()` succeeds, then all deferred statements 
 
 Lastly, make sure that all statements get executed through the same connection where the transaction was initiated.
 
-### Isolation Level
+### Isolation Level and Read Consistency
 
-Only `TRANSACTION_SERIALIZABLE` is supported, with `linearizable` read consistency by default. Setting `level=weak` or `level=none` may introduce read inconsistencies.
+JDBC transaction isolation (dirty/non-repeatable/phantom reads) and rqlite read consistency are **orthogonal** concepts:
+
+- `Connection.setTransactionIsolation` only accepts `TRANSACTION_SERIALIZABLE`; `getTransactionIsolation()` always reports it. `DatabaseMetaData.supportsTransactionIsolationLevel` returns `true` only for `SERIALIZABLE`, and `getDefaultTransactionIsolation` is `SERIALIZABLE`.
+- rqlite's read consistency is selected independently with the `level` option: `none`, `weak`, `strong`, `linearizable` (default) or `auto`. Changing `level` does **not** change `getTransactionIsolation()`.
+
+On a single node all levels return the same data. In a cluster: `none` reads the local database (fastest, possibly stale); `weak` requires the node to believe it is the Leader (otherwise it forwards); `linearizable` reflects all committed writes; `strong` routes the read through the Raft log (slow, testing only); `auto` selects `none` on read replicas and `weak` otherwise. `freshness`/`freshnessStrict` bound staleness for `none` reads, and `linearizableTimeoutSec` bounds `linearizable` reads.
+
+### Transaction Semantics
+
+The driver implements JDBC transactions over rqlite's atomic batch requests:
+
+- `setAutoCommit(false)` begins a deferred transaction; `insert`/`update`/`delete` are buffered and sent as a single `transaction=true` request on `commit()` (or discarded on `rollback()`).
+- Enabling auto-commit (`setAutoCommit(true)`) while a transaction is active commits it, per JDBC.
+- **`commit()`, `rollback()` and `setReadOnly(...)` are lenient no-ops** where the JDBC spec would throw (e.g. `commit()` while auto-commit is enabled). This is a deliberate deviation to remain compatible with change-set tools (Liquibase, metolithe) and ORMs (Exposed) that toggle auto-commit and call `commit()` in ways the spec forbids.
+- **Read-your-writes is not provided**: writes are deferred until `commit()`, so queries issued inside the transaction do not observe pending writes.
+- **Savepoints and interactive `BEGIN`/`COMMIT`/`ROLLBACK` are not supported** (`supportsSavepoints()` is `false`); rqlite documents explicit transaction control as undefined.
+- `close()` with an active transaction discards the pending buffer.
+- **Queued writes (`queue=true`) trade durability and atomicity for throughput.** rqlite's queue ignores the `transaction` flag (unless the server is started with `-write-queue-tx`), so `queue=true` combined with a deferred transaction or `executeBatch` is **not atomic**, and an HTTP 200 only means the request was queued. Queued responses carry no per-statement results, so `executeUpdate` reports `0` and `executeBatch` reports `Statement.SUCCESS_NO_INFO` for queued statements.
 
 ### Type Mapping
 

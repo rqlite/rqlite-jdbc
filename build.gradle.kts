@@ -16,6 +16,7 @@ dependencies {
   testImplementation("com.zaxxer:HikariCP:6.3.0")
   testImplementation("org.jetbrains.exposed:exposed-dao:0.61.0")
   testImplementation("org.jetbrains.exposed:exposed-jdbc:0.61.0")
+  testImplementation("org.liquibase:liquibase-core:5.0.4")
 }
 
 tasks.processResources {

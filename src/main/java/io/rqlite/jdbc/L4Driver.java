@@ -184,7 +184,7 @@ public class L4Driver implements Driver {
       new Prop(kTimeoutSec, "Timeout in seconds", () -> String.valueOf(d.timeoutSec)),
       new Prop(kQueue, "Enable queue mode", () -> String.valueOf(d.queue)),
       new Prop(kWait, "Enable wait mode", () -> String.valueOf(d.wait)),
-      new Prop(kLevel, "Consistency level (none, weak, strong, linearizable)", () -> d.level.toString()),
+      new Prop(kLevel, "Consistency level (none, weak, strong, linearizable, auto)", () -> d.level.toString()),
       new Prop(kLinearizableTimeoutSec, "Linearizable timeout in seconds", () -> String.valueOf(d.linearizableTimeoutSec)),
       new Prop(kFreshnessSec, "Freshness in seconds", () -> String.valueOf(d.freshnessSec)),
       new Prop(kFreshnessStrict, "Enable strict freshness", () -> String.valueOf(d.freshnessStrict)),

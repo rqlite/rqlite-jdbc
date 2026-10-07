@@ -137,7 +137,7 @@ public class L4Conn implements Connection {
   }
 
   @Override public void setReadOnly(boolean readOnly) throws SQLException {
-    checkClosed(); // no-op
+    checkClosed(); // no-op hint; lenient to accommodate change-set tools and ORMs
   }
 
   @Override public boolean isReadOnly() throws SQLException {

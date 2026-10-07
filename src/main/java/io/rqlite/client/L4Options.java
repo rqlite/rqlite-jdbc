@@ -86,62 +86,64 @@ public class L4Options {
     return (String) p.get(k);
   }
 
+  /**
+   * Case-insensitive property lookup. Keys are matched exactly first, then
+   * case-insensitively (JDBC URL query-param keys may be lower-cased).
+   */
+  private static String getCI(Properties p, String key) {
+    var direct = p.getProperty(key);
+    if (direct != null) {
+      return direct;
+    }
+    for (var name : p.stringPropertyNames()) {
+      if (name.equalsIgnoreCase(key)) {
+        return p.getProperty(name);
+      }
+    }
+    return null;
+  }
+
   public void update(Properties p) {
+    if (p == null) {
+      return;
+    }
     try {
-      if (p.containsKey(kBaseUrl)) {
-        this.baseUrl = get(p, kBaseUrl);
-      }
-      if (p.containsKey(kTimeoutSec)) {
-        this.timeoutSec = Long.parseLong(get(p, kTimeoutSec));
-      }
-      if (p.containsKey(kDbTimeoutSec)) {
-        this.dbTimeoutSec = Long.parseLong(get(p, kDbTimeoutSec));
-      }
-      if (p.containsKey(kQueue)) {
-        this.queue = Boolean.parseBoolean(get(p, kQueue));
-      }
-      if (p.containsKey(kWait)) {
-        this.wait = Boolean.parseBoolean(get(p, kWait));
-      }
-      if (p.containsKey(kLevel)) {
-        this.level = L4Level.valueOf(get(p, kLevel).toLowerCase());
-      }
-      if (p.containsKey(kLinearizableTimeoutSec)) {
-        this.linearizableTimeoutSec = Long.parseLong(get(p, kLinearizableTimeoutSec));
-      }
-      if (p.containsKey(kFreshnessSec)) {
-        this.freshnessSec = Long.parseLong(get(p, kFreshnessSec));
-      }
-      if (p.containsKey(kFreshnessStrict)) {
-        this.freshnessStrict = Boolean.parseBoolean(get(p, kFreshnessStrict));
-      }
-      if (p.containsKey(kRetries)) {
-        this.retries = Integer.parseInt(get(p, kRetries));
-      }
-      if (p.containsKey(kRedirect)) {
-        this.redirect = Boolean.parseBoolean(get(p, kRedirect));
-      }
-      if (p.containsKey(kMaxBatchStatements)) {
-        this.maxBatchStatements = Integer.parseInt(get(p, kMaxBatchStatements));
-      }
-      if (p.containsKey(kUser)) {
-        this.user = get(p, kUser);
-      }
-      if (p.containsKey(kPassword)) {
-        this.password = get(p, kPassword);
-      }
-      if (p.containsKey(kCaCert)) {
-        this.cacert = get(p, kCaCert);
-      }
-      if (p.containsKey(kClientCert)) {
-        this.clientCert = get(p, kClientCert);
-      }
-      if (p.containsKey(kClientKey)) {
-        this.clientKey = get(p, kClientKey);
-      }
-      if (p.containsKey(kInsecure)) {
-        this.insecure = Boolean.parseBoolean(get(p, kInsecure));
-      }
+      var v = getCI(p, kBaseUrl);
+      if (v != null) this.baseUrl = v;
+      v = getCI(p, kTimeoutSec);
+      if (v != null) this.timeoutSec = Long.parseLong(v);
+      v = getCI(p, kDbTimeoutSec);
+      if (v != null) this.dbTimeoutSec = Long.parseLong(v);
+      v = getCI(p, kQueue);
+      if (v != null) this.queue = Boolean.parseBoolean(v);
+      v = getCI(p, kWait);
+      if (v != null) this.wait = Boolean.parseBoolean(v);
+      v = getCI(p, kLevel);
+      if (v != null) this.level = L4Level.valueOf(v.toLowerCase());
+      v = getCI(p, kLinearizableTimeoutSec);
+      if (v != null) this.linearizableTimeoutSec = Long.parseLong(v);
+      v = getCI(p, kFreshnessSec);
+      if (v != null) this.freshnessSec = Long.parseLong(v);
+      v = getCI(p, kFreshnessStrict);
+      if (v != null) this.freshnessStrict = Boolean.parseBoolean(v);
+      v = getCI(p, kRetries);
+      if (v != null) this.retries = Integer.parseInt(v);
+      v = getCI(p, kRedirect);
+      if (v != null) this.redirect = Boolean.parseBoolean(v);
+      v = getCI(p, kMaxBatchStatements);
+      if (v != null) this.maxBatchStatements = Integer.parseInt(v);
+      v = getCI(p, kUser);
+      if (v != null) this.user = v;
+      v = getCI(p, kPassword);
+      if (v != null) this.password = v;
+      v = getCI(p, kCaCert);
+      if (v != null) this.cacert = v;
+      v = getCI(p, kClientCert);
+      if (v != null) this.clientCert = v;
+      v = getCI(p, kClientKey);
+      if (v != null) this.clientKey = v;
+      v = getCI(p, kInsecure);
+      if (v != null) this.insecure = Boolean.parseBoolean(v);
     } catch (Exception e) {
       throw new IllegalStateException(e);
     }

@@ -109,7 +109,8 @@ public class L4St implements Statement {
     try {
       currentResponse = runExecute(sql);
       var result = currentResponse.first();
-      return result.rowsAffected != null ? result.rowsAffected : 0;
+      // A resultless response means the write was queued (queue=true).
+      return result != null && result.rowsAffected != null ? result.rowsAffected : 0;
     } catch (Exception e) {
       throw badUpdate(e);
     }
@@ -305,6 +306,13 @@ public class L4St implements Statement {
     }
     try {
       currentResponse = client.execute(isAutoCommit(), batch.toArray(new L4Statement[0]));
+      if (currentResponse.results == null || currentResponse.results.isEmpty()) {
+        // A resultless response means the batch was queued (queue=true): counts are unknown.
+        var queued = new int[batch.size()];
+        Arrays.fill(queued, Statement.SUCCESS_NO_INFO);
+        batch.clear();
+        return queued;
+      }
       var updateCounts = new int[currentResponse.results.size()];
       for (int i = 0; i < currentResponse.results.size(); i++) {
         var result = currentResponse.results.get(i);

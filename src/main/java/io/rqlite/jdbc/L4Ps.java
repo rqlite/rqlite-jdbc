@@ -107,7 +107,13 @@ public class L4Ps extends L4St implements PreparedStatement {
     currentResultIndex = -1;
     try {
       currentResponse = runner.get();
-      var result = checkResult(currentResponse.first());
+      var result = currentResponse.first();
+      if (result == null) {
+        // Resultless response (e.g. a queued write); no result set is available.
+        resultSetAvailable = false;
+        return;
+      }
+      checkResult(result);
       currentResultIndex = 0;
       resultSetAvailable = result.columns != null && !result.columns.isEmpty();
       if (resultSetAvailable) {
@@ -137,7 +143,8 @@ public class L4Ps extends L4St implements PreparedStatement {
     }
     executeInternal(() -> client.execute(isAutoCommit(), statement));
     var result = currentResponse.first();
-    return result.rowsAffected != null ? result.rowsAffected : 0;
+    // A resultless response means the write was queued (queue=true).
+    return result != null && result.rowsAffected != null ? result.rowsAffected : 0;
   }
 
   @Override public boolean execute() throws SQLException {
@@ -171,6 +178,13 @@ public class L4Ps extends L4St implements PreparedStatement {
     var size = batch.size();
     try {
       currentResponse = client.execute(isAutoCommit(), batch.toArray(new L4Statement[0]));
+      if (currentResponse.results == null || currentResponse.results.isEmpty()) {
+        // A resultless response means the batch was queued (queue=true): counts are unknown.
+        var queued = new int[size];
+        Arrays.fill(queued, Statement.SUCCESS_NO_INFO);
+        batch.clear();
+        return queued;
+      }
       var updateCounts = new int[currentResponse.results.size()];
       for (int i = 0; i < currentResponse.results.size(); i++) {
         var result = currentResponse.results.get(i);

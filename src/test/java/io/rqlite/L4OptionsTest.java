@@ -53,6 +53,16 @@ public class L4OptionsTest {
       assertTrue(o.queryParams(false).contains("redirect=true"));
     });
 
+    it("Accepts the auto consistency level", () -> {
+      var p = new Properties();
+      p.setProperty(L4Options.kBaseUrl, "http://example:4001");
+      p.setProperty(L4Options.kLevel, "auto");
+      var o = new L4Options(p);
+      assertEquals(L4Level.auto, o.level);
+      assertTrue(o.queryParams(false).contains("level=auto"));
+      assertFalse(o.queryParams(false).contains("linearizable_timeout"));
+    });
+
     it("Parses mTLS client certificate options", () -> {
       var p = new Properties();
       p.setProperty(L4Options.kBaseUrl, "https://example:4001");

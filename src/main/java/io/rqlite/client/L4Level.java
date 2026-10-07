@@ -1,5 +1,5 @@
 package io.rqlite.client;
 
 public enum L4Level {
-  none, weak, strong, linearizable
+  none, weak, strong, linearizable, auto
 }
