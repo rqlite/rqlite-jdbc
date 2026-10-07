@@ -23,3 +23,7 @@ jobs:
       - name: Coverage report
         uses: actions/upload-artifact@v4
         with: { name: "coverage-report-${{ matrix.rqlite }}", path: build/reports/jacoco/test/html }
+      - name: Coverage data (XML)
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with: { name: "coverage-xml-${{ matrix.rqlite }}", path: build/reports/jacoco/test/jacocoTestReport.xml }

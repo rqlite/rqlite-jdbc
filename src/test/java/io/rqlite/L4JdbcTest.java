@@ -493,6 +493,11 @@ public class L4JdbcTest {
       assertFalse(isSelect("INSERT INTO table (a) SELECT a FROM table2"));
       assertTrue(isSelect("PRAGMA table_info('t')"));
       assertTrue(isSelect("/* leading */ -- comments\n SELECT 1"));
+      assertFalse(isSelect("WITH c AS (SELECT 1) SELECT * FROM c"));
+      assertTrue(isSelect("EXPLAIN QUERY PLAN SELECT 1"));
+      assertTrue(isSelect("VALUES (1), (2)"));
+      assertTrue(isSelect("-- leading\nSELECT 1"));
+      assertFalse(isSelect("/* c */ UPDATE t SET a = 1"));
       assertFalse(isSelect(""));
       assertFalse(isSelect("  "));
       assertFalse(isSelect(null));
@@ -555,6 +560,17 @@ public class L4JdbcTest {
       assertEquals("SELECT 'a'';''b' AS v", result9[0].sql);
       assertEquals("SELECT 2", result9[1].sql);
 
+      // '--' comment at EOF and an unterminated block comment remain one statement
+      assertEquals(1, split("SELECT 1 -- trailing").length);
+      assertEquals(1, split("SELECT 1 /* unterminated").length);
+
+      // Escaped double-quote inside a quoted identifier
+      var sql10 = "SELECT \"a\"\"b\" FROM t; SELECT 2";
+      var result10 = split(sql10);
+      assertEquals(2, result10.length);
+      assertEquals("SELECT \"a\"\"b\" FROM t", result10[0].sql);
+      assertEquals("SELECT 2", result10[1].sql);
+
       // Test null input
       try {
         split(null);
@@ -581,6 +597,22 @@ public class L4JdbcTest {
       assertEquals(0, positionalParameterCount(named));
       assertEquals(3, namedParameterNames(named).size());
       assertEquals("name", namedParameterNames(named).get(0));
+
+      // '?' inside line/block comments and unterminated strings is ignored
+      assertEquals(1, positionalParameterCount(scanPlaceholders("SELECT ? -- ?\n")));
+      assertEquals(1, positionalParameterCount(scanPlaceholders("SELECT ? /* ? */")));
+      assertEquals(0, positionalParameterCount(scanPlaceholders("SELECT 'unterminated ?")));
+
+      // Named sigils inside identifiers are not placeholders
+      assertEquals(0, positionalParameterCount(scanPlaceholders("SELECT a$b, c:d FROM t")));
+
+      // '?' adjacent to an identifier is still a placeholder
+      assertEquals(1, positionalParameterCount(scanPlaceholders("SELECT f(?)")));
+
+      // Mixed named + positional
+      var mixed = scanPlaceholders("SELECT :a, @b, $c, ?");
+      assertEquals(1, positionalParameterCount(mixed));
+      assertEquals(3, namedParameterNames(mixed).size());
     });
   }
 }

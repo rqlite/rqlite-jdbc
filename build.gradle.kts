@@ -25,6 +25,11 @@ tasks.processResources {
 }
 
 tasks.withType<JacocoReport> {
+  reports {
+    xml.required.set(true)
+    csv.required.set(true)
+    html.required.set(true)
+  }
   afterEvaluate {
     classDirectories.setFrom(
       files(classDirectories.files.map {
