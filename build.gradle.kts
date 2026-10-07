@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "io.rqlite"
-version = "9.1.2.1"
+version = "10.5.2.1"
 
 configure<io.vacco.oss.gitflow.GsPluginProfileExtension> {
   addJ8Spec()
@@ -16,6 +16,7 @@ dependencies {
   testImplementation("com.zaxxer:HikariCP:6.3.0")
   testImplementation("org.jetbrains.exposed:exposed-dao:0.61.0")
   testImplementation("org.jetbrains.exposed:exposed-jdbc:0.61.0")
+  testImplementation("org.liquibase:liquibase-core:5.0.4")
 }
 
 tasks.processResources {
@@ -25,6 +26,11 @@ tasks.processResources {
 }
 
 tasks.withType<JacocoReport> {
+  reports {
+    xml.required.set(true)
+    csv.required.set(true)
+    html.required.set(true)
+  }
   afterEvaluate {
     classDirectories.setFrom(
       files(classDirectories.files.map {

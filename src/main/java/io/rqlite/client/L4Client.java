@@ -19,44 +19,89 @@ public class L4Client implements Closeable {
   private final String baseUrl;
   private final String executeURL;
   private final String queryURL;
+  private final String requestURL;
   private final String statusURL;
   private final String nodesURL;
   private final String readyURL;
+  private final L4Options options;
 
   public  String basicAuthUser = "";
   private String basicAuthPass = "";
   private List<L4Response> buffer;
 
   public L4Client(String baseURL, HttpClient client) {
+    this(baseURL, client, new L4Options());
+  }
+
+  public L4Client(String baseURL, HttpClient client, L4Options options) {
     this.baseUrl = Objects.requireNonNull(baseURL);
+    this.options = Objects.requireNonNull(options);
     this.executeURL = baseURL + "/db/execute";
     this.queryURL = baseURL + "/db/query";
+    this.requestURL = baseURL + "/db/request";
     this.statusURL = baseURL + "/status";
     this.nodesURL = baseURL + "/nodes";
     this.readyURL = baseURL + "/readyz";
     this.httpClient = client != null
       ? client
-      : L4Http.defaultHttpClient(L4Options.timeoutSec).build();
+      : L4Http.defaultHttpClient(options.timeoutSec).build();
+  }
+
+  private static final int MaxRedirects = 3;
+
+  /**
+   * Returns the redirect target if the response is a redirect that should be followed,
+   * or null when the response should be handled as-is.
+   */
+  private String redirectTarget(HttpResponse<String> res, int hop) {
+    if (!options.redirect) {
+      return null;
+    }
+    var code = res.statusCode();
+    if (code != 301 && code != 302 && code != 307 && code != 308) {
+      return null;
+    }
+    if (hop >= MaxRedirects) {
+      throw new IllegalStateException(format("Too many redirects [%d]", hop));
+    }
+    var loc = res.headers().firstValue("Location").orElse(null);
+    return loc == null || loc.isEmpty() ? null : loc;
+  }
+
+  private HttpResponse<String> send(String method, String url, String body) {
+    var currentUrl = url;
+    var statusCode = -1;
+    try {
+      for (int hop = 0; ; hop++) {
+        if (body != null) {
+          L4Log.trace("{} - {} {}", this, method, body);
+        }
+        var builder = HttpRequest.newBuilder().uri(URI.create(currentUrl));
+        if (options.timeoutSec > 0) {
+          builder.timeout(Duration.ofSeconds(options.timeoutSec));
+        }
+        if (body != null) {
+          builder.method(method, HttpRequest.BodyPublishers.ofString(body));
+          builder.header("Content-Type", "application/json");
+        } else {
+          builder.method(method, HttpRequest.BodyPublishers.noBody());
+        }
+        addBasicAuth(builder);
+        var res = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+        statusCode = res.statusCode();
+        var next = redirectTarget(res, hop);
+        if (next == null) {
+          return checkResponse(res);
+        }
+        currentUrl = next;
+      }
+    } catch (Exception e) {
+      throw new IllegalStateException(format("HTTP %s error: (%d) [%s]", method, statusCode, currentUrl), e);
+    }
   }
 
   private HttpResponse<String> doPostRequest(String url, String body) {
-    var statusCode = -1;
-    try {
-      L4Log.trace("{} - POST {}", this, body);
-      var builder = HttpRequest.newBuilder().uri(URI.create(url));
-      if (L4Options.timeoutSec > 0) {
-        builder.timeout(Duration.ofSeconds(L4Options.timeoutSec));
-      }
-      builder.method("POST", HttpRequest.BodyPublishers.ofString(body));
-      builder.header("Content-Type", "application/json");
-      addBasicAuth(builder);
-      var req = builder.build();
-      var res = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
-      statusCode = res.statusCode();
-      return checkResponse(res);
-    } catch (Exception e) {
-      throw new IllegalStateException(format("HTTP POST error: (%d) [%s]", statusCode, url), e);
-    }
+    return send("POST", url, body);
   }
 
   private HttpResponse<String> doJSONPostRequest(String url, String body) {
@@ -64,20 +109,7 @@ public class L4Client implements Closeable {
   }
 
   private HttpResponse<String> doGetRequest(String url) {
-    var statusCode = -1;
-    try {
-      var builder = HttpRequest.newBuilder().uri(URI.create(url)).GET();
-      addBasicAuth(builder);
-      if (L4Options.timeoutSec > 0) {
-        builder.timeout(Duration.ofSeconds(L4Options.timeoutSec));
-      }
-      var req = builder.build();
-      var res = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
-      statusCode = res.statusCode();
-      return checkResponse(res);
-    } catch (Exception e) {
-      throw new IllegalStateException(format("HTTP GET error: (%d) [%s]", statusCode, url), e);
-    }
+    return send("GET", url, null);
   }
 
   private void addBasicAuth(HttpRequest.Builder builder) {
@@ -104,14 +136,21 @@ public class L4Client implements Closeable {
     }
   }
 
+  private L4Response toResponse(HttpResponse<String> resp) {
+    var node = Json.parse(resp.body()).asObject();
+    var r = response(resp.statusCode(), node);
+    if (r.error != null) {
+      throw new IllegalStateException(r.error);
+    }
+    return r;
+  }
+
   private L4Response doExecute(boolean transaction, L4Statement ... statements) {
-    var queryParams = L4Options.queryParams(transaction);
+    var queryParams = options.queryParams(transaction);
     var url = executeURL + queryParams;
     var body = L4Statement.toArray(statements).toString();
     var resp = doJSONPostRequest(url, body);
-    var rb = resp.body();
-    var node = Json.parse(rb).asObject();
-    return response(resp.statusCode(), node);
+    return toResponse(resp);
   }
 
   public void stopBuffer(boolean commit, Consumer<L4Response> responseFn) {
@@ -145,11 +184,21 @@ public class L4Client implements Closeable {
 
   public L4Response query(L4Statement ... statements) {
     var body = L4Statement.toArray(statements).toString();
-    var queryParams = L4Options.queryParams(false);
+    var queryParams = options.queryParams(false);
     var resp = doJSONPostRequest(queryURL + queryParams, body);
-    var rb = resp.body();
-    var node = Json.parse(rb).asObject();
-    return response(resp.statusCode(), node);
+    return toResponse(resp);
+  }
+
+  /**
+   * Sends statements to rqlite's Unified Endpoint, which accepts both read and write
+   * statements and classifies each one server-side. Use this when the statement type
+   * is not known ahead of time.
+   */
+  public L4Response request(L4Statement ... statements) {
+    var body = L4Statement.toArray(statements).toString();
+    var queryParams = options.queryParams(false);
+    var resp = doJSONPostRequest(requestURL + queryParams, body);
+    return toResponse(resp);
   }
 
   public L4Response querySingle(String statement, Object... args) {
@@ -163,6 +212,27 @@ public class L4Client implements Closeable {
     return Json.parse(resp.body());
   }
 
+  /**
+   * Returns the rqlite build version reported by the server (without a leading 'v'),
+   * or null if it cannot be determined.
+   */
+  public String rqliteVersion() {
+    var status = status();
+    if (status == null || !status.isObject()) {
+      return null;
+    }
+    var build = status.asObject().get("build");
+    if (build == null || !build.isObject()) {
+      return null;
+    }
+    var version = build.asObject().get("version");
+    if (version == null || !version.isString()) {
+      return null;
+    }
+    var v = version.asString();
+    return v.startsWith("v") ? v.substring(1) : v;
+  }
+
   public JsonValue nodes() {
     var resp = doGetRequest(nodesURL);
     return Json.parse(resp.body());
@@ -173,15 +243,42 @@ public class L4Client implements Closeable {
     return resp.body();
   }
 
-  public void withTxTimeoutSec(long txTimeoutSec) {
-    if (txTimeoutSec < 0) {
-      throw new IllegalArgumentException(format("Invalid timeout [%d]", txTimeoutSec));
+  public synchronized void withQueryTimeoutSec(long queryTimeoutSec) {
+    if (queryTimeoutSec < 0) {
+      throw new IllegalArgumentException(format("Invalid timeout [%d]", queryTimeoutSec));
     }
-    L4Options.timeoutSec = txTimeoutSec == 0 ? -1 : txTimeoutSec;
+    this.options.dbTimeoutSec = queryTimeoutSec;
   }
 
+  public long getQueryTimeoutSec() {
+    return this.options.dbTimeoutSec;
+  }
+
+  public synchronized void withNetworkTimeoutSec(long networkTimeoutSec) {
+    if (networkTimeoutSec < 0) {
+      throw new IllegalArgumentException(format("Invalid timeout [%d]", networkTimeoutSec));
+    }
+    this.options.timeoutSec = networkTimeoutSec;
+  }
+
+  public long getNetworkTimeoutSec() {
+    return this.options.timeoutSec;
+  }
+
+  /** @deprecated use {@link #withNetworkTimeoutSec(long)} */
+  @Deprecated
+  public void withTxTimeoutSec(long txTimeoutSec) {
+    withNetworkTimeoutSec(txTimeoutSec);
+  }
+
+  /** @deprecated use {@link #getNetworkTimeoutSec()} */
+  @Deprecated
   public long getTxTimeoutSec() {
-    return L4Options.timeoutSec;
+    return getNetworkTimeoutSec();
+  }
+
+  public L4Options getOptions() {
+    return options;
   }
 
   public String getBaseUrl() {

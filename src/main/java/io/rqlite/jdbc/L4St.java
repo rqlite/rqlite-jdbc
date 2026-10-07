@@ -2,7 +2,9 @@ package io.rqlite.jdbc;
 
 import io.rqlite.client.L4Client;
 import io.rqlite.client.L4Response;
+import io.rqlite.client.L4Result;
 import io.rqlite.client.L4Statement;
+import io.rqlite.json.JsonObject;
 
 import java.sql.*;
 import java.util.*;
@@ -51,25 +53,49 @@ public class L4St implements Statement {
     currentResultSet = null;
   }
 
-  private L4Response runRaw(String sql) throws SQLException {
-    var sel = isSelect(sql);
-    var sta = split(sql);
-    var res = sel ? client.query(sta) : client.execute(isAutoCommit(), sta);
+  private L4Response checkResults(L4Response res) {
     for (var result : res.results) {
       checkResult(result);
     }
     return res;
   }
 
-  @Override public ResultSet executeQuery(String sql) throws SQLException {
+  private void begin(String sql) throws SQLException {
     checkClosed();
     closeCurrentResultSet();
     currentResultIndex = -1;
     if (sql == null || sql.trim().isEmpty()) {
       throw badStatement();
     }
+  }
+
+  private L4Response runQuery(String sql) throws SQLException {
+    return checkResults(client.query(split(sql)));
+  }
+
+  private L4Response runExecute(String sql) throws SQLException {
+    return checkResults(client.execute(isAutoCommit(), split(sql)));
+  }
+
+  private L4Response runRequest(String sql) throws SQLException {
+    var sta = split(sql);
+    L4Response res;
+    if (client.isBuffering()) {
+      res = client.execute(false, sta);
+    } else if (client.getOptions().queue) {
+      // Queued writes are not supported by the Unified Endpoint, so fall back to
+      // dedicated routing when the queue option is enabled.
+      res = isSelect(sql) ? client.query(sta) : client.execute(true, sta);
+    } else {
+      res = client.request(sta);
+    }
+    return checkResults(res);
+  }
+
+  @Override public ResultSet executeQuery(String sql) throws SQLException {
+    begin(sql);
     try {
-      currentResponse = runRaw(sql);
+      currentResponse = runQuery(sql);
       currentResultIndex = 0;
       currentResultSet = new L4Rs(currentResponse.first(), this).clampTo(maxRows);
       return currentResultSet;
@@ -79,16 +105,12 @@ public class L4St implements Statement {
   }
 
   @Override public int executeUpdate(String sql) throws SQLException {
-    checkClosed();
-    closeCurrentResultSet();
-    currentResultIndex = -1;
-    if (sql == null || sql.trim().isEmpty()) {
-      throw badStatement();
-    }
+    begin(sql);
     try {
-      currentResponse = client.execute(isAutoCommit(), new L4Statement().sql(sql));
-      var result = checkResult(currentResponse.first());
-      return result.rowsAffected != null ? result.rowsAffected : 0;
+      currentResponse = runExecute(sql);
+      var result = currentResponse.first();
+      // A resultless response means the write was queued (queue=true).
+      return result != null && result.rowsAffected != null ? result.rowsAffected : 0;
     } catch (Exception e) {
       throw badUpdate(e);
     }
@@ -134,13 +156,13 @@ public class L4St implements Statement {
 
   @Override public int getQueryTimeout() throws SQLException {
     checkClosed();
-    return (int) (client.getTxTimeoutSec() == -1 ? 0 : client.getTxTimeoutSec());
+    return (int) client.getQueryTimeoutSec();
   }
 
   @Override public void setQueryTimeout(int seconds) throws SQLException {
     checkClosed();
     try {
-      client.withTxTimeoutSec(seconds);
+      client.withQueryTimeoutSec(seconds);
     } catch (Exception e) {
       throw badParam(e);
     }
@@ -185,14 +207,9 @@ public class L4St implements Statement {
   }
 
   @Override public boolean execute(String sql) throws SQLException {
-    checkClosed();
-    closeCurrentResultSet();
-    currentResultIndex = -1;
-    if (sql == null || sql.trim().isEmpty()) {
-      throw badStatement();
-    }
+    begin(sql);
     try {
-      currentResponse = runRaw(sql);
+      currentResponse = runRequest(sql);
       if (currentResponse.results == null || currentResponse.results.isEmpty()) {
         return false;
       }
@@ -281,15 +298,28 @@ public class L4St implements Statement {
     if (batch.isEmpty()) {
       return new int[0];
     }
+    var maxBatch = client.getOptions().maxBatchStatements;
+    if (maxBatch > 0 && batch.size() > maxBatch) {
+      // Batches are sent atomically (transaction=true); splitting them would break that
+      // guarantee, so exceeding the configured limit is rejected instead.
+      throw badParam("Batch size [" + batch.size() + "] exceeds maxBatchStatements [" + maxBatch + "]");
+    }
     try {
       currentResponse = client.execute(isAutoCommit(), batch.toArray(new L4Statement[0]));
+      if (currentResponse.results == null || currentResponse.results.isEmpty()) {
+        // A resultless response means the batch was queued (queue=true): counts are unknown.
+        var queued = new int[batch.size()];
+        Arrays.fill(queued, Statement.SUCCESS_NO_INFO);
+        batch.clear();
+        return queued;
+      }
       var updateCounts = new int[currentResponse.results.size()];
       for (int i = 0; i < currentResponse.results.size(); i++) {
         var result = currentResponse.results.get(i);
         if (result.error != null) {
           throw new BatchUpdateException(result.error, SqlStateGeneralError, updateCounts, null);
         }
-        updateCounts[i] = result.rowsAffected;
+        updateCounts[i] = result.rowsAffected != null ? result.rowsAffected : 0;
       }
       batch.clear();
       return updateCounts;
@@ -299,7 +329,7 @@ public class L4St implements Statement {
   }
 
   @Override public Connection getConnection() {
-    return null;
+    return conn;
   }
 
   @Override public boolean getMoreResults(int current) throws SQLException {
@@ -326,13 +356,22 @@ public class L4St implements Statement {
 
   @Override public ResultSet getGeneratedKeys() throws SQLException {
     checkClosed();
-    throw notSupported("Generated keys");
+    var r = new L4Result(new JsonObject());
+    r.columns.add("last_insert_id");
+    r.types.add(RQ_INTEGER);
+    if (currentResponse != null) {
+      var first = currentResponse.first();
+      if (first != null && first.lastInsertId != null) {
+        r.addRow(first.lastInsertId.toString());
+      }
+    }
+    return new L4Rs(r, this);
   }
 
   @Override public int executeUpdate(String sql, int autoGeneratedKeys) throws SQLException {
     checkClosed();
-    if (autoGeneratedKeys == RETURN_GENERATED_KEYS) {
-      throw notSupported("Generated keys");
+    if (autoGeneratedKeys != RETURN_GENERATED_KEYS && autoGeneratedKeys != NO_GENERATED_KEYS) {
+      throw badParam("Invalid autoGeneratedKeys value");
     }
     return executeUpdate(sql);
   }
@@ -349,8 +388,8 @@ public class L4St implements Statement {
 
   @Override public boolean execute(String sql, int autoGeneratedKeys) throws SQLException {
     checkClosed();
-    if (autoGeneratedKeys == RETURN_GENERATED_KEYS) {
-      throw notSupported("Generated keys");
+    if (autoGeneratedKeys != RETURN_GENERATED_KEYS && autoGeneratedKeys != NO_GENERATED_KEYS) {
+      throw badParam("Invalid autoGeneratedKeys value");
     }
     return execute(sql);
   }
@@ -395,20 +434,11 @@ public class L4St implements Statement {
   }
 
   @Override public <T> T unwrap(Class<T> iface) throws SQLException {
-    if (iface == null) {
-      throw badInterface();
-    }
-    if (iface == Statement.class || iface == Wrapper.class) {
-      return iface.cast(this);
-    }
-    throw badUnwrap(iface);
+    return L4Err.unwrap(iface, this);
   }
 
   @Override public boolean isWrapperFor(Class<?> iface) throws SQLException {
-    if (iface == null) {
-      throw badInterface();
-    }
-    return iface == Statement.class || iface == Wrapper.class;
+    return L4Err.isWrapperFor(iface, this);
   }
 
 }

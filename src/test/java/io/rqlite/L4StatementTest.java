@@ -41,7 +41,7 @@ public class L4StatementTest {
         .withPositionalParam(1)
         .withPositionalParam(blobData);
       var statement4 = builder4.build();
-      assertEquals("[\"INSERT INTO users (id, data) VALUES (?, ?)\",1,\"3q2+7w==\"]", statement4.toString());
+      assertEquals("[\"INSERT INTO users (id, data) VALUES (?, ?)\",1,\"x'deadbeef'\"]", statement4.toString());
     });
   }
 }

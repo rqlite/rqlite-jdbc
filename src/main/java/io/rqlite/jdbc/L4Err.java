@@ -13,7 +13,7 @@ public class L4Err {
     SqlStateInvalidParam        = "22003",
     SqlStateInvalidConversion   = "22018",
     SqlStateGeneralError        = "HY000",
-    SqlStateInvalidColumn       = "22003",
+    SqlStateInvalidColumn       = "42S22",
     SqlStateInvalidCursor       = "24000",
     SqlStateFeatureNotSupported = "0A000",
     SqlStateInvalidAttr         = "HY092",
@@ -49,60 +49,43 @@ public class L4Err {
     );
   }
 
-  public static SQLException badBoolean(int columnIndex, String value, Exception e) {
+  private static SQLException badFormat(String noun, int columnIndex, String value, Exception e) {
     return new SQLException(
-      format("Invalid boolean format for column %d: %s", columnIndex, value),
+      format("Invalid %s format for column %d: %s", noun, columnIndex, value),
       SqlStateInvalidType, e
     );
+  }
+
+  public static SQLException badBoolean(int columnIndex, String value, Exception e) {
+    return badFormat("boolean", columnIndex, value, e);
   }
 
   public static SQLException badInteger(int columnIndex, String value, Exception e) {
-    return new SQLException(
-      format("Invalid integer format for column %d: %s", columnIndex, value),
-      SqlStateInvalidType, e
-    );
+    return badFormat("integer", columnIndex, value, e);
   }
 
   public static SQLException badLong(int columnIndex, String value, Exception e) {
-    return new SQLException(
-      format("Invalid long format for column %d: %s", columnIndex, value),
-      SqlStateInvalidType, e
-    );
+    return badFormat("long", columnIndex, value, e);
   }
 
   public static SQLException badFloat(int columnIndex, String value, Exception e) {
-    return new SQLException(
-      format("Invalid float format for column %d: %s", columnIndex, value),
-      SqlStateInvalidType, e
-    );
+    return badFormat("float", columnIndex, value, e);
   }
 
   public static SQLException badDouble(int columnIndex, String value, Exception e) {
-    return new SQLException(
-      format("Invalid double format for column %d: %s", columnIndex, value),
-      SqlStateInvalidType, e
-    );
+    return badFormat("double", columnIndex, value, e);
   }
 
   public static SQLException badByte(int columnIndex, String value, Exception e) {
-    return new SQLException(
-      format("Invalid byte format for column %d: %s", columnIndex, value),
-      SqlStateInvalidType, e
-    );
+    return badFormat("byte", columnIndex, value, e);
   }
 
   public static SQLException badShort(int columnIndex, String value, Exception e) {
-    return new SQLException(
-      format("Invalid short format for column %d: %s", columnIndex, value),
-      SqlStateInvalidType, e
-    );
+    return badFormat("short", columnIndex, value, e);
   }
 
   public static SQLException badBigDecimal(int columnIndex, String value, Exception e) {
-    return new SQLException(
-      format("Invalid numeric format for column %d: %s", columnIndex, value),
-      SqlStateInvalidType, e
-    );
+    return badFormat("numeric", columnIndex, value, e);
   }
 
   public static SQLException badB64(int columnIndex, String value, Exception e) {
@@ -113,31 +96,19 @@ public class L4Err {
   }
 
   public static SQLException badDate(int columnIndex, String value, Exception e) {
-    return new SQLException(
-      format("Invalid date format for column %d: %s", columnIndex, value),
-      SqlStateInvalidType, e
-    );
+    return badFormat("date", columnIndex, value, e);
   }
 
   public static SQLException badTimestamp(int columnIndex, String value, Exception e) {
-    return new SQLException(
-      format("Invalid timestamp format for column %d: %s", columnIndex, value),
-      SqlStateInvalidType, e
-    );
+    return badFormat("timestamp", columnIndex, value, e);
   }
 
   public static SQLException badTime(int columnIndex, String value, Exception e) {
-    return new SQLException(
-      format("Invalid time format for column %d: %s", columnIndex, value),
-      SqlStateInvalidType, e
-    );
+    return badFormat("time", columnIndex, value, e);
   }
 
   public static SQLException badUrl(int columnIndex, String value, Exception e) {
-    return new SQLException(
-      format("Invalid URL format for column %d: %s", columnIndex, value),
-      SqlStateInvalidType, e
-    );
+    return badFormat("URL", columnIndex, value, e);
   }
 
   public static SQLException badType(int columnIndex, String value) {
@@ -195,6 +166,23 @@ public class L4Err {
     return new SQLException(format("Cannot unwrap to [%s]", iface.getCanonicalName()));
   }
 
+  public static <T> T unwrap(Class<T> iface, Object self) throws SQLException {
+    if (iface == null) {
+      throw badInterface();
+    }
+    if (iface.isAssignableFrom(self.getClass())) {
+      return iface.cast(self);
+    }
+    throw badUnwrap(iface);
+  }
+
+  public static boolean isWrapperFor(Class<?> iface, Object self) throws SQLException {
+    if (iface == null) {
+      throw badInterface();
+    }
+    return iface.isAssignableFrom(self.getClass());
+  }
+
   public static SQLException badStatement() {
     return new SQLException("SQL statement cannot be null or empty", SqlStateInvalidQuery);
   }
@@ -203,20 +191,24 @@ public class L4Err {
     return new SQLException(msg, SqlStateInvalidQuery);
   }
 
+  private static SQLException execFailed(String op, Exception e) {
+    return new SQLException(format("%s execution failed: %s", op, e.getMessage()), SqlStateConnectionError, e);
+  }
+
   public static SQLException badQuery(Exception e) {
-    return new SQLException(format("Query execution failed: %s", e.getMessage()), SqlStateConnectionError, e);
+    return execFailed("Query", e);
   }
 
   public static SQLException badUpdate(Exception e) {
-    return new SQLException(format("Update execution failed: %s", e.getMessage()), SqlStateConnectionError, e);
+    return execFailed("Update", e);
   }
 
   public static SQLException badBatch(Exception e) {
-    return new SQLException(format("Batch execution failed: %s", e.getMessage()), SqlStateConnectionError, e);
+    return execFailed("Batch", e);
   }
 
   public static SQLException badExec(Exception e) {
-    return new SQLException(format("Execution failed: %s", e.getMessage()), SqlStateConnectionError, e);
+    return execFailed("Execution", e);
   }
 
   public static SQLException badState(String msg) {
@@ -241,14 +233,20 @@ public class L4Err {
 
   public static void checkColumn(int idx, L4Result result) throws SQLException {
     if (idx < 1 || idx > result.columns.size()) {
-      throw new SQLException(format("Invalid column index: [%d]", idx), "22003");
+      throw new SQLException(format("Invalid column index: [%d]", idx), SqlStateInvalidColumn);
     }
   }
 
   public static void checkColumnLabel(String label, L4Result result) throws SQLException {
-    if (label == null || !result.columns.contains(label)) {
+    if (label == null) {
       throw badColumn(label);
     }
+    for (var column : result.columns) {
+      if (column.equalsIgnoreCase(label)) {
+        return;
+      }
+    }
+    throw badColumn(label);
   }
 
   public static void checkRow(int currentRow, L4Result result, boolean isClosed) throws SQLException {

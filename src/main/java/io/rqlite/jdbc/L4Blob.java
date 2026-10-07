@@ -7,11 +7,10 @@ import java.util.Arrays;
 
 import static io.rqlite.jdbc.L4Err.*;
 
-public class L4Blob implements Blob {
+public class L4Blob extends L4Lob implements Blob {
 
   private ByteArrayOutputStream data;
   private SerialBlob serialBlob;
-  private boolean isClosed = false;
 
   public L4Blob() throws SQLException {
     this.data = new ByteArrayOutputStream();
@@ -19,9 +18,7 @@ public class L4Blob implements Blob {
   }
 
   private void checkClosed() throws SQLException {
-    if (isClosed) {
-      throw new SQLException("Blob is closed", L4Err.SqlStateGeneralError);
-    }
+    checkClosed("Blob");
   }
 
   private void updateSerialBlob() throws SQLException {
@@ -108,13 +105,10 @@ public class L4Blob implements Blob {
     updateSerialBlob();
   }
 
-  @Override public void free() throws SQLException {
-    if (!isClosed) {
-      data = null;
-      serialBlob.free();
-      serialBlob = null;
-      isClosed = true;
-    }
+  @Override protected void release() throws SQLException {
+    data = null;
+    serialBlob.free();
+    serialBlob = null;
   }
 
 }

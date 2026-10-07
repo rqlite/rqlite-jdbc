@@ -21,6 +21,9 @@ public class L4Err {
     if (result == null) {
       throw new IllegalStateException("missing result");
     }
+    if (result.error != null) {
+      throw new IllegalStateException(result.error);
+    }
     return result;
   }
 

@@ -65,6 +65,11 @@ public class L4DriverTest {
       });
 
       it("Inserts data via object mapping", () -> {
+        // Keep this integration test idempotent when run repeatedly against a shared server.
+        rq.executeSingle("DELETE FROM \"Location\"");
+        rq.executeSingle("DELETE FROM \"Device\"");
+        rq.executeSingle("DELETE FROM \"User\"");
+
         var idFn = new MtMurmur3IFn(1984);
         var fj = new MtJdbc(ds);
         var userDao = new UserDao(L4Db.Main, Fmt, fj, idFn);
@@ -126,6 +131,12 @@ public class L4DriverTest {
             fkImp.print(System.out);
             fkExp.print(System.out);
           }
+        }
+      });
+
+      it("Reports a consistent catalog name", () -> {
+        try (var conn = DriverManager.getConnection(L4Tests.rqUrl)) {
+          assertEquals(L4Db.Main, conn.getCatalog());
         }
       });
 

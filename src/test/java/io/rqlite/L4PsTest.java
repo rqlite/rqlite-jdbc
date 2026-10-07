@@ -411,7 +411,7 @@ public class L4PsTest {
           fail("Expected BatchUpdateException");
         } catch (BatchUpdateException e) {
           assertEquals(SqlStateConnectionError, e.getSQLState());
-          assertArrayEquals(new int[]{}, e.getUpdateCounts());
+          assertArrayEquals(new int[]{Statement.EXECUTE_FAILED}, e.getUpdateCounts());
         }
 
         // Verify valid batch
@@ -564,7 +564,7 @@ public class L4PsTest {
           invalidPs.executeQuery();
           fail("Expected SQLException for invalid table");
         } catch (SQLException e) {
-          assertEquals(SqlStateGeneralError, e.getSQLState());
+          assertEquals(SqlStateConnectionError, e.getSQLState());
         }
 
         // Test clearParameters
@@ -732,6 +732,39 @@ public class L4PsTest {
         selectPs.close();
       });
 
+      it("Stores byte arrays as real BLOB values", () -> {
+        setupPreparedStatementTestTable(rq);
+        var bytes = new byte[] {(byte) 0xDE, (byte) 0xAD, (byte) 0xBE, (byte) 0xEF, 0x00, 0x7F};
+
+        var ps = new L4Ps(rq, "INSERT INTO ps_test_data (blob_val) VALUES (?)");
+        ps.setBytes(1, bytes);
+        assertEquals(1, ps.executeUpdate());
+
+        var typePs = new L4Ps(rq, "SELECT typeof(blob_val) FROM ps_test_data ORDER BY id DESC LIMIT 1");
+        var typeRs = typePs.executeQuery();
+        assertTrue(typeRs.next());
+        assertEquals("blob", typeRs.getString(1));
+
+        var selPs = new L4Ps(rq, "SELECT blob_val FROM ps_test_data ORDER BY id DESC LIMIT 1");
+        var rs = selPs.executeQuery();
+        assertTrue(rs.next());
+        assertArrayEquals(bytes, rs.getBytes("blob_val"));
+      });
+
+      it("Distinguishes literal 'null' text from SQL NULL", () -> {
+        setupPreparedStatementTestTable(rq);
+
+        var ps = new L4Ps(rq, "INSERT INTO ps_test_data (text_val) VALUES (?)");
+        ps.setString(1, "null");
+        assertEquals(1, ps.executeUpdate());
+
+        var sel = new L4Ps(rq, "SELECT text_val FROM ps_test_data ORDER BY id DESC LIMIT 1");
+        var rs = sel.executeQuery();
+        assertTrue(rs.next());
+        assertEquals("null", rs.getString("text_val"));
+        assertFalse(rs.wasNull());
+      });
+
       it("Tests L4Ps setObject with target SQL type and scale/length", () -> {
         setupPreparedStatementTestTable(rq);
         var insertSql = "INSERT INTO ps_test_data (" +
@@ -847,7 +880,7 @@ public class L4PsTest {
           ps.setObject(1, "test", Types.ARRAY, 0);
           fail("Expected SQLException for unsupported SQL type");
         } catch (SQLException e) {
-          assertEquals(SqlStateInvalidColumn, e.getSQLState());
+          assertEquals(SqlStateInvalidParam, e.getSQLState());
         }
 
         // Test invalid parameter conversion
@@ -855,11 +888,48 @@ public class L4PsTest {
           ps.setObject(1, "invalid", Types.NUMERIC, 2); // Invalid numeric string
           fail("Expected SQLException for invalid conversion");
         } catch (SQLException e) {
-          assertEquals(SqlStateInvalidColumn, e.getSQLState());
+          assertEquals(SqlStateInvalidParam, e.getSQLState());
         }
 
         ps.close();
         selectPs.close();
+      });
+
+      it("Reports prepared statement parameter metadata from SQL", () -> {
+        setupPreparedStatementTestTable(rq);
+
+        var insert = new L4Ps(rq,
+          "INSERT INTO ps_test_data (num_val, text_val, bool_val, blob_val) VALUES (?, ?, ?, ?)");
+        var pm = insert.getParameterMetaData();
+        assertEquals(4, pm.getParameterCount());
+        assertEquals(Types.NUMERIC, pm.getParameterType(1));
+        assertEquals(Types.VARCHAR, pm.getParameterType(2));
+        assertEquals(Types.BOOLEAN, pm.getParameterType(3));
+        assertEquals(Types.BLOB, pm.getParameterType(4));
+
+        var select = new L4Ps(rq,
+          "SELECT * FROM ps_test_data WHERE int_val = ? AND text_val = ?");
+        var pm2 = select.getParameterMetaData();
+        assertEquals(2, pm2.getParameterCount());
+        assertEquals(Types.INTEGER, pm2.getParameterType(1));
+        assertEquals(Types.VARCHAR, pm2.getParameterType(2));
+
+        var update = new L4Ps(rq,
+          "UPDATE ps_test_data SET num_val = ? WHERE id = ?");
+        var pm3 = update.getParameterMetaData();
+        assertEquals(2, pm3.getParameterCount());
+        assertEquals(Types.NUMERIC, pm3.getParameterType(1));
+        assertEquals(Types.INTEGER, pm3.getParameterType(2));
+
+        // ResultSetMetaData can be obtained before parameters are bound
+        var probe = new L4Ps(rq, "SELECT int_val, text_val FROM ps_test_data WHERE id = ?");
+        var md = probe.getMetaData();
+        assertEquals(2, md.getColumnCount());
+
+        insert.close();
+        select.close();
+        update.close();
+        probe.close();
       });
     }
   }

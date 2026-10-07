@@ -71,7 +71,7 @@ public class L4Rs implements ResultSet {
     checkRow(currentRow, result, isClosed);
     checkColumn(columnIndex, result);
     var value = result.values.get(currentRow).get(columnIndex - 1);
-    wasNull = (value == null || value.equals("null"));
+    wasNull = (value == null);
     if (wasNull) {
       return null;
     }
@@ -656,20 +656,11 @@ public class L4Rs implements ResultSet {
   }
 
   @Override public <T> T unwrap(Class<T> iface) throws SQLException {
-    if (iface == null) {
-      throw badInterface();
-    }
-    if (iface == ResultSet.class || iface == Wrapper.class) {
-      return iface.cast(this);
-    }
-    throw badUnwrap(iface);
+    return L4Err.unwrap(iface, this);
   }
 
   @Override public boolean isWrapperFor(Class<?> iface) throws SQLException {
-    if (iface == null) {
-      throw badInterface();
-    }
-    return iface == ResultSet.class || iface == Wrapper.class;
+    return L4Err.isWrapperFor(iface, this);
   }
 
 }

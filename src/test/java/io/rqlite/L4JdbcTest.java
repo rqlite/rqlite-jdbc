@@ -134,6 +134,23 @@ public class L4JdbcTest {
       assertEquals(Types.INTEGER, getJdbcType("integer")); // Case-insensitive
     });
 
+    it("Normalizes sized types for precision, class and display size", () -> {
+      assertEquals(255, getJdbcTypePrecision("VARCHAR(255)"));
+      assertEquals(38, getJdbcTypePrecision("NUMERIC(10,2)"));
+      assertEquals(255, getJdbcTypePrecision("TEXT"));
+
+      assertEquals(String.class, getJdbcTypeClass("VARCHAR(255)"));
+      assertEquals(Integer.class, getJdbcTypeClass("INT"));
+      assertEquals(Object.class, getJdbcTypeClass(null));
+
+      assertEquals(255, getJdbcTypeColumnDisplaySize("TEXT"));
+      assertEquals(11, getJdbcTypeColumnDisplaySize("INTEGER"));
+
+      assertTrue(getJdbcTypeSigned("BIGINT"));
+      assertFalse(getJdbcTypeSigned("VARCHAR(255)"));
+      assertFalse(getJdbcTypeSigned(null));
+    });
+
     it("Tests L4Jdbc primitive type conversions", () -> {
       int colIdx = 1;
 
@@ -471,8 +488,16 @@ public class L4JdbcTest {
 
       // Test edge cases
       assertTrue(isSelect("SELECT * FROM table -- comment with select"));
-      assertTrue(isSelect("/* SELECT in comment */ INSERT INTO table (a) VALUES (1)"));
+      assertFalse(isSelect("/* SELECT in comment */ INSERT INTO table (a) VALUES (1)"));
       assertTrue(isSelect("SELECT * FROM table WHERE name = 'select'"));
+      assertFalse(isSelect("INSERT INTO table (a) SELECT a FROM table2"));
+      assertTrue(isSelect("PRAGMA table_info('t')"));
+      assertTrue(isSelect("/* leading */ -- comments\n SELECT 1"));
+      assertFalse(isSelect("WITH c AS (SELECT 1) SELECT * FROM c"));
+      assertTrue(isSelect("EXPLAIN QUERY PLAN SELECT 1"));
+      assertTrue(isSelect("VALUES (1), (2)"));
+      assertTrue(isSelect("-- leading\nSELECT 1"));
+      assertFalse(isSelect("/* c */ UPDATE t SET a = 1"));
       assertFalse(isSelect(""));
       assertFalse(isSelect("  "));
       assertFalse(isSelect(null));
@@ -521,6 +546,31 @@ public class L4JdbcTest {
       assertEquals("SELECT * FROM table", result7[0].sql);
       assertEquals("SELECT * FROM table2", result7[1].sql);
 
+      // Test semicolons in bracketed and backtick-quoted identifiers
+      var sql8 = "SELECT * FROM [weird;table]; SELECT `back;tick` FROM t";
+      var result8 = split(sql8);
+      assertEquals(2, result8.length);
+      assertEquals("SELECT * FROM [weird;table]", result8[0].sql);
+      assertEquals("SELECT `back;tick` FROM t", result8[1].sql);
+
+      // Test escaped quotes inside string literals must not split
+      var sql9 = "SELECT 'a'';''b' AS v; SELECT 2";
+      var result9 = split(sql9);
+      assertEquals(2, result9.length);
+      assertEquals("SELECT 'a'';''b' AS v", result9[0].sql);
+      assertEquals("SELECT 2", result9[1].sql);
+
+      // '--' comment at EOF and an unterminated block comment remain one statement
+      assertEquals(1, split("SELECT 1 -- trailing").length);
+      assertEquals(1, split("SELECT 1 /* unterminated").length);
+
+      // Escaped double-quote inside a quoted identifier
+      var sql10 = "SELECT \"a\"\"b\" FROM t; SELECT 2";
+      var result10 = split(sql10);
+      assertEquals(2, result10.length);
+      assertEquals("SELECT \"a\"\"b\" FROM t", result10[0].sql);
+      assertEquals("SELECT 2", result10[1].sql);
+
       // Test null input
       try {
         split(null);
@@ -528,6 +578,41 @@ public class L4JdbcTest {
       } catch (IllegalArgumentException e) {
         assertNotNull(e.getMessage());
       }
+    });
+
+    it("Scans prepared statement placeholders", () -> {
+      assertEquals(2, positionalParameterCount(scanPlaceholders("SELECT * FROM t WHERE a = ? AND b = ?")));
+
+      // Placeholders inside strings, comments and quoted identifiers are ignored
+      assertEquals(1, positionalParameterCount(scanPlaceholders(
+        "SELECT * FROM t WHERE a = '?' AND b = ? -- ?\n")));
+      assertEquals(0, positionalParameterCount(scanPlaceholders(
+        "SELECT * FROM [weird?table] WHERE a = 'no'")));
+
+      // Explicit numeric placeholders (?3 then a plain ? becomes index 4)
+      assertEquals(4, positionalParameterCount(scanPlaceholders("SELECT * FROM t WHERE a = ?3 AND b = ?")));
+
+      // Named placeholders
+      var named = scanPlaceholders("SELECT * FROM t WHERE a = :name AND b = @other AND c = $third");
+      assertEquals(0, positionalParameterCount(named));
+      assertEquals(3, namedParameterNames(named).size());
+      assertEquals("name", namedParameterNames(named).get(0));
+
+      // '?' inside line/block comments and unterminated strings is ignored
+      assertEquals(1, positionalParameterCount(scanPlaceholders("SELECT ? -- ?\n")));
+      assertEquals(1, positionalParameterCount(scanPlaceholders("SELECT ? /* ? */")));
+      assertEquals(0, positionalParameterCount(scanPlaceholders("SELECT 'unterminated ?")));
+
+      // Named sigils inside identifiers are not placeholders
+      assertEquals(0, positionalParameterCount(scanPlaceholders("SELECT a$b, c:d FROM t")));
+
+      // '?' adjacent to an identifier is still a placeholder
+      assertEquals(1, positionalParameterCount(scanPlaceholders("SELECT f(?)")));
+
+      // Mixed named + positional
+      var mixed = scanPlaceholders("SELECT :a, @b, $c, ?");
+      assertEquals(1, positionalParameterCount(mixed));
+      assertEquals(3, namedParameterNames(mixed).size());
     });
   }
 }

@@ -1,7 +1,6 @@
 package io.rqlite;
 
 import io.rqlite.client.L4Client;
-import io.rqlite.client.L4Options;
 import io.rqlite.client.L4Statement;
 import io.rqlite.jdbc.L4St;
 import j8spec.annotation.DefinedOrder;
@@ -97,8 +96,12 @@ public class L4StTest {
         rs.close();
 
         // Test executeQuery with invalid SQL
-        rs = stmt.executeQuery("SELECT * FROM nonexistent_table");
-        assertNotNull(rs.getWarnings());
+        try {
+          stmt.executeQuery("SELECT * FROM nonexistent_table");
+          fail("Expected SQLException for invalid table");
+        } catch (SQLException e) {
+          assertEquals(SqlStateConnectionError, e.getSQLState());
+        }
         stmt.close();
       });
 
@@ -119,8 +122,12 @@ public class L4StTest {
         assertEquals(0, rowsAffected);
 
         // Test executeUpdate with invalid SQL
-        stmt.executeUpdate("UPDATE nonexistent_table SET num_val = 1");
-        assertNotNull(stmt.getWarnings());
+        try {
+          stmt.executeUpdate("UPDATE nonexistent_table SET num_val = 1");
+          fail("Expected SQLException for invalid table");
+        } catch (SQLException e) {
+          assertEquals(SqlStateConnectionError, e.getSQLState());
+        }
         stmt.close();
       });
 
@@ -169,6 +176,40 @@ public class L4StTest {
         stmt.close();
       });
 
+      it("Routes INSERT ... SELECT through the correct endpoint", () -> {
+        setupTestTable(rq);
+        var stmt = new L4St(rq);
+
+        stmt.execute("DROP TABLE IF EXISTS st_copy");
+        stmt.execute("CREATE TABLE st_copy (id INTEGER, num_val NUMERIC, bool_val BOOLEAN, text_val VARCHAR)");
+
+        // Contains "SELECT" but is a write; must not be sent to /db/query.
+        stmt.execute(
+          "INSERT INTO st_copy (id, num_val, bool_val, text_val) " +
+          "SELECT id, num_val, bool_val, text_val FROM st_test_data"
+        );
+
+        var rs = stmt.executeQuery("SELECT COUNT(*) AS c FROM st_copy");
+        assertTrue(rs.next());
+        assertTrue(rs.getInt("c") >= 1);
+
+        stmt.execute("DROP TABLE st_copy");
+        stmt.close();
+      });
+
+      it("Resolves column labels case-insensitively", () -> {
+        setupTestTable(rq);
+        var stmt = new L4St(rq);
+
+        var rs = stmt.executeQuery("SELECT * FROM st_test_data WHERE id = 1");
+        assertTrue(rs.next());
+        assertEquals(123.45, rs.getDouble("NUM_VAL"), 0.001);
+        assertEquals(1, rs.getInt("ID"));
+        rs.close();
+
+        stmt.close();
+      });
+
       it("Tests L4St batch execution", () -> {
         setupTestTable(rq);
         var stmt = new L4St(rq);
@@ -203,6 +244,27 @@ public class L4StTest {
         }
 
         stmt.close();
+      });
+
+      it("Rejects batches exceeding maxBatchStatements", () -> {
+        setupTestTable(rq);
+        var prev = rq.getOptions().maxBatchStatements;
+        rq.getOptions().maxBatchStatements = 2;
+        try {
+          var stmt = new L4St(rq);
+          stmt.addBatch("UPDATE st_test_data SET num_val = 1 WHERE id = 1");
+          stmt.addBatch("UPDATE st_test_data SET num_val = 2 WHERE id = 2");
+          stmt.addBatch("UPDATE st_test_data SET num_val = 3 WHERE id = 1");
+          try {
+            stmt.executeBatch();
+            fail("Expected SQLException for batch over maxBatchStatements");
+          } catch (SQLException e) {
+            assertEquals(SqlStateInvalidParam, e.getSQLState());
+          }
+          stmt.close();
+        } finally {
+          rq.getOptions().maxBatchStatements = prev;
+        }
       });
 
       it("Tests L4St closeOnCompletion", () -> {
@@ -248,7 +310,7 @@ public class L4StTest {
         var stmt = new L4St(rq);
 
         // Test default timeout (0, no timeout)
-        assertEquals(L4Options.timeoutSec, stmt.getQueryTimeout());
+        assertEquals(rq.getOptions().dbTimeoutSec, stmt.getQueryTimeout());
         stmt.setQueryTimeout(10);
         assertEquals(10, stmt.getQueryTimeout());
         var rs = stmt.executeQuery("SELECT * FROM st_test_data");
@@ -361,17 +423,11 @@ public class L4StTest {
         } catch (SQLException e) {
           assertEquals(SqlStateFeatureNotSupported, e.getSQLState());
         }
-        try {
-          stmt.getGeneratedKeys();
-          fail("Expected SQLException for getGeneratedKeys");
-        } catch (SQLException e) {
-          assertEquals(SqlStateFeatureNotSupported, e.getSQLState());
-        }
-        try {
-          stmt.executeUpdate("INSERT INTO st_test_data (num_val) VALUES (1)", Statement.RETURN_GENERATED_KEYS);
-          fail("Expected SQLException for generated keys");
-        } catch (SQLException e) {
-          assertEquals(SqlStateFeatureNotSupported, e.getSQLState());
+        // Generated keys are supported via rqlite's last_insert_id
+        stmt.executeUpdate("INSERT INTO st_test_data (num_val) VALUES (1)", Statement.RETURN_GENERATED_KEYS);
+        try (var keys = stmt.getGeneratedKeys()) {
+          assertTrue(keys.next());
+          assertTrue(keys.getLong(1) > 0);
         }
         try {
           stmt.setPoolable(true);

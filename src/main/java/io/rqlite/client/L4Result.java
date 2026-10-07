@@ -23,8 +23,8 @@ public class L4Result {
       this.columns = json.get("columns") != null ? toStringList(json.get("columns").asArray()) : new ArrayList<>();
       this.types = json.get("types") != null ? toStringList(json.get("types").asArray()) : new ArrayList<>();
       this.values = json.get("values") != null ? toValuesList(json.get("values").asArray()) : new ArrayList<>();
-      this.lastInsertId = json.get("last_insert_id") != null ? json.getLong("last_insert_id", 0) : 0;
-      this.rowsAffected = json.get("rows_affected") != null ? json.getInt("rows_affected",0) : 0;
+      this.lastInsertId = json.get("last_insert_id") != null ? json.getLong("last_insert_id", 0) : null;
+      this.rowsAffected = json.get("rows_affected") != null ? json.getInt("rows_affected", 0) : null;
     }
   }
 
@@ -58,11 +58,19 @@ public class L4Result {
   }
 
   public String get(String col, List<String> row) {
-    return row.get(indexOf(col));
+    var idx = indexOf(col);
+    if (idx < 0) {
+      throw new IllegalArgumentException("Unknown column: " + col);
+    }
+    return row.get(idx);
   }
 
   public void set(String col, String val, List<String> row) {
-    row.set(indexOf(col), val);
+    var idx = indexOf(col);
+    if (idx < 0) {
+      throw new IllegalArgumentException("Unknown column: " + col);
+    }
+    row.set(idx, val);
   }
 
   public void print(PrintStream out) {

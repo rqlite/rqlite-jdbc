@@ -37,7 +37,8 @@ public class L4Tests {
   public static final boolean runIntegrationTests = !GraphicsEnvironment.isHeadless() || System.getenv("RQLITE_URL") != null;
 
   public static L4Client localClient() {
-    return new L4Client(RQLITE_URL, L4Http.defaultHttpClient(L4Options.timeoutSec).build());
+    var options = new L4Options();
+    return new L4Client(RQLITE_URL, L4Http.defaultHttpClient(options.timeoutSec).build(), options);
   }
 
   public static void setupPreparedStatementTestTable(L4Client rq) {
