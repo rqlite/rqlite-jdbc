@@ -72,7 +72,8 @@ public class L4Driver implements Driver {
    * which matters under connection pooling. The client is keyed by target and TLS identity.
    */
   public HttpClient createHttpClient(L4Options options) throws SQLException {
-    var key = options.baseUrl + "|" + options.insecure + "|" + options.cacert;
+    var key = options.baseUrl + "|" + options.insecure + "|" + options.cacert
+      + "|" + options.clientCert + "|" + options.clientKey;
     var existing = httpClients.get(key);
     if (existing != null) {
       return existing;
@@ -86,8 +87,12 @@ public class L4Driver implements Driver {
     try {
       var isHttps = options.baseUrl.toLowerCase().startsWith("https://");
       var cacert = options.cacert;
+      var clientCert = options.clientCert;
+      var clientKey = options.clientKey;
       if (!isHttps) {
         return L4Http.defaultHttpClient(options.timeoutSec).build();
+      } else if (clientCert != null && !clientCert.isEmpty() && clientKey != null && !clientKey.isEmpty()) {
+        return L4Http.newMTlsClient(cacert, clientCert, clientKey, options.timeoutSec).build();
       } else if (options.insecure) {
         return L4Http.newTLSSClientInsecure(options.timeoutSec).build();
       } else if (cacert != null && !cacert.isEmpty()) {
@@ -146,7 +151,7 @@ public class L4Driver implements Driver {
   @Override public DriverPropertyInfo[] getPropertyInfo(String url, Properties info) {
     var mergedProps = mergeProperties(info, new HashMap<>());
     var defaults = new L4Options();
-    var props = new DriverPropertyInfo[12];
+    var props = new DriverPropertyInfo[14];
 
     props[0] = new DriverPropertyInfo(kUser, mergedProps.getProperty(kUser));
     props[0].description = "Username for rqlite authentication";
@@ -195,6 +200,14 @@ public class L4Driver implements Driver {
     props[11] = new DriverPropertyInfo(kRedirect, mergedProps.getProperty(kRedirect, String.valueOf(defaults.redirect)));
     props[11].description = "Follow rqlite leader redirects (HTTP 301)";
     props[11].required = false;
+
+    props[12] = new DriverPropertyInfo(kClientCert, mergedProps.getProperty(kClientCert));
+    props[12].description = "Path to PEM client certificate for mTLS";
+    props[12].required = false;
+
+    props[13] = new DriverPropertyInfo(kClientKey, mergedProps.getProperty(kClientKey));
+    props[13].description = "Path to unencrypted PKCS#8 PEM client key for mTLS";
+    props[13].required = false;
 
     return props;
   }

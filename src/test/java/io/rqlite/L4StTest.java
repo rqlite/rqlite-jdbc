@@ -402,17 +402,11 @@ public class L4StTest {
         } catch (SQLException e) {
           assertEquals(SqlStateFeatureNotSupported, e.getSQLState());
         }
-        try {
-          stmt.getGeneratedKeys();
-          fail("Expected SQLException for getGeneratedKeys");
-        } catch (SQLException e) {
-          assertEquals(SqlStateFeatureNotSupported, e.getSQLState());
-        }
-        try {
-          stmt.executeUpdate("INSERT INTO st_test_data (num_val) VALUES (1)", Statement.RETURN_GENERATED_KEYS);
-          fail("Expected SQLException for generated keys");
-        } catch (SQLException e) {
-          assertEquals(SqlStateFeatureNotSupported, e.getSQLState());
+        // Generated keys are supported via rqlite's last_insert_id
+        stmt.executeUpdate("INSERT INTO st_test_data (num_val) VALUES (1)", Statement.RETURN_GENERATED_KEYS);
+        try (var keys = stmt.getGeneratedKeys()) {
+          assertTrue(keys.next());
+          assertTrue(keys.getLong(1) > 0);
         }
         try {
           stmt.setPoolable(true);

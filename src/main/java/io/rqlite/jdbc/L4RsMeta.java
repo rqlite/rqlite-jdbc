@@ -172,7 +172,7 @@ public class L4RsMeta implements ResultSetMetaData {
     if (iface == null) {
       throw badInterface();
     }
-    if (iface == ResultSetMetaData.class || iface == Wrapper.class) {
+    if (iface.isAssignableFrom(getClass())) {
       return iface.cast(this);
     }
     throw badUnwrap(iface);
@@ -182,7 +182,7 @@ public class L4RsMeta implements ResultSetMetaData {
     if (iface == null) {
       throw badInterface();
     }
-    return iface == ResultSetMetaData.class || iface == Wrapper.class;
+    return iface.isAssignableFrom(getClass());
   }
 
 }

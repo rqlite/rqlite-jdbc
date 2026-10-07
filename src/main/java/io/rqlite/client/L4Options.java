@@ -12,9 +12,10 @@ public class L4Options {
     kQueue = "queue", kWait = "wait", kLevel = "level", kLinearizableTimeoutSec = "linearizableTimeoutSec",
     kFreshnessSec = "freshnessSec", kFreshnessStrict = "freshnessStrict",
     kUser = "user", kPassword = "password", kDbTimeoutSec = "dbTimeoutSec",
-    kRetries = "retries", kRedirect = "redirect";
+    kRetries = "retries", kRedirect = "redirect",
+    kClientCert = "clientCert", kClientKey = "clientKey";
 
-  public String  baseUrl, user, password, cacert;
+  public String  baseUrl, user, password, cacert, clientCert, clientKey;
 
   public boolean insecure;
   public boolean queue = false;
@@ -64,7 +65,6 @@ public class L4Options {
     var pairs = new String[] {
       queue ? kv("queue", true) : null,
       transaction ? kv("transaction", true) : null,
-      kv("timings", true),
       timeoutSec > 0 ? kv("timeout", format("%ds", timeoutSec)) : null,
       wait ? kv("wait", true) : null,
       kv("level", level),
@@ -127,6 +127,12 @@ public class L4Options {
       }
       if (p.containsKey(kCaCert)) {
         this.cacert = get(p, kCaCert);
+      }
+      if (p.containsKey(kClientCert)) {
+        this.clientCert = get(p, kClientCert);
+      }
+      if (p.containsKey(kClientKey)) {
+        this.clientKey = get(p, kClientKey);
       }
       if (p.containsKey(kInsecure)) {
         this.insecure = Boolean.parseBoolean(get(p, kInsecure));

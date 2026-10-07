@@ -8,7 +8,7 @@ public class L4Log {
   public static BiConsumer<String, Object[]> traceFn, debugFn, infoFn, warnFn;
 
   public static void setTraceLogger(BiConsumer<String, Object[]> logFn) {
-    L4Log.debugFn = Objects.requireNonNull(logFn);
+    L4Log.traceFn = Objects.requireNonNull(logFn);
   }
 
   public static void setDebugLogger(BiConsumer<String, Object[]> logFn) {
@@ -24,8 +24,8 @@ public class L4Log {
   }
 
   public static void trace(String fmt, Object ... args) {
-    if (debugFn != null) {
-      debugFn.accept(fmt, args);
+    if (traceFn != null) {
+      traceFn.accept(fmt, args);
     }
   }
 

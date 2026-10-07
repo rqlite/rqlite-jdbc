@@ -221,6 +221,27 @@ public class L4Client implements Closeable {
     return Json.parse(resp.body());
   }
 
+  /**
+   * Returns the rqlite build version reported by the server (without a leading 'v'),
+   * or null if it cannot be determined.
+   */
+  public String rqliteVersion() {
+    var status = status();
+    if (status == null || !status.isObject()) {
+      return null;
+    }
+    var build = status.asObject().get("build");
+    if (build == null || !build.isObject()) {
+      return null;
+    }
+    var version = build.asObject().get("version");
+    if (version == null || !version.isString()) {
+      return null;
+    }
+    var v = version.asString();
+    return v.startsWith("v") ? v.substring(1) : v;
+  }
+
   public JsonValue nodes() {
     var resp = doGetRequest(nodesURL);
     return Json.parse(resp.body());

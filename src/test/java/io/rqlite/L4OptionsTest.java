@@ -53,6 +53,25 @@ public class L4OptionsTest {
       assertTrue(o.queryParams(false).contains("redirect=true"));
     });
 
+    it("Parses mTLS client certificate options", () -> {
+      var p = new Properties();
+      p.setProperty(L4Options.kBaseUrl, "https://example:4001");
+      p.setProperty(L4Options.kClientCert, "/tmp/client.crt");
+      p.setProperty(L4Options.kClientKey, "/tmp/client.key");
+      var o = new L4Options(p);
+      assertEquals("/tmp/client.crt", o.clientCert);
+      assertEquals("/tmp/client.key", o.clientKey);
+    });
+
+    it("Rejects invalid mTLS client key material", () -> {
+      try {
+        io.rqlite.client.L4Http.newMTlsClient(null, "/nonexistent/client.crt", "/nonexistent/client.key", 5);
+        fail("Expected exception for missing mTLS files");
+      } catch (Exception e) {
+        assertNotNull(e.getMessage());
+      }
+    });
+
     it("Parses connection properties into a scoped options instance", () -> {
       var p = new Properties();
       p.setProperty(L4Options.kBaseUrl, "http://example:4001");

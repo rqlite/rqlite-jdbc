@@ -93,6 +93,8 @@ These options come from `rqlite`'s [Developer Guide](https://rqlite.io/docs/api)
 | `user`                      | `String`  | `null`                   | Username for RQLite server authentication.                                   |
 | `password`                  | `String`  | `null`                   | Password for RQLite server authentication.                                   |
 | `cacert`                    | `String`  | `null`                   | Path to the CA certificate for SSL/TLS connections.                         |
+| `clientCert`                | `String`  | `null`                   | Path to a PEM client certificate for mTLS (requires `clientKey`).           |
+| `clientKey`                 | `String`  | `null`                   | Path to an unencrypted PKCS#8 PEM client key for mTLS (requires `clientCert`). |
 | `insecure`                  | `boolean` | `false`                  | If `true`, disables SSL/TLS verification (not recommended for production).   |
 | `timeoutSec`                | `long`    | `5`                      | Network/request timeout in seconds (connect + request forwarding). `0` disables it. |
 | `dbTimeoutSec`              | `long`    | `0`                      | Per-statement execution timeout in seconds (rqlite `db_timeout`). `0` means no limit. |
@@ -139,6 +141,18 @@ rqlite reports statement errors inside an HTTP 200 response. The driver surfaces
 ### BLOB Parameters
 
 `setBytes`, `setBlob`, and binary stream setters send data as a SQLite `x'hex'` literal, which rqlite stores as a real `BLOB`. (rqlite treats base64 strings as `TEXT`, so values read back should be accessed via `getBytes`/`getBlob`.)
+
+### Generated Keys
+
+`Statement.getGeneratedKeys()` returns the rqlite `last_insert_id` from the most recent write (a single `last_insert_id` column), and `DatabaseMetaData.supportsGetGeneratedKeys()` reports `true`. `executeUpdate`/`execute` accept `RETURN_GENERATED_KEYS`.
+
+### Mutual TLS (mTLS)
+
+Set `clientCert` and `clientKey` to enable client-certificate authentication. The certificate is a PEM file; the private key must be an **unencrypted PKCS#8** PEM (`-----BEGIN PRIVATE KEY-----`). The optional `cacert` verifies the server; when omitted the JVM default trust store is used.
+
+### rqlite Server Version
+
+`L4DbMeta.getRqliteVersion()` returns the rqlite build version (e.g. `10.5.2`) parsed from the server's `/status` endpoint. `getDatabaseProductName()`/`getDatabaseProductVersion()` continue to report the SQLite engine (`SQLite`), which ORMs use for dialect detection.
 
 ### Transaction Limitations
 

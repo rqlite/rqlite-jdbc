@@ -128,6 +128,7 @@ public class L4DbMetaTest {
       it("Tests database identification methods", () -> {
         assertEquals("SQLite", meta.getDatabaseProductName());
         assertTrue(meta.getDatabaseProductVersion().matches("\\d+\\.\\d+\\.\\d+"));
+        assertTrue(meta.getRqliteVersion().matches("\\d+\\.\\d+\\.\\d+"));
         assertEquals(4, meta.getJDBCMajorVersion());
         assertEquals(0, meta.getJDBCMinorVersion());
         L4DbMeta.setDriverName(L4DbMeta.DriverName);
@@ -227,10 +228,10 @@ public class L4DbMetaTest {
         assertFalse(meta.supportsOpenCursorsAcrossRollback());
         assertTrue(meta.supportsOpenStatementsAcrossCommit());
         assertTrue(meta.supportsOpenStatementsAcrossRollback());
-        assertTrue(meta.supportsSavepoints());
+        assertFalse(meta.supportsSavepoints());
         assertTrue(meta.supportsNamedParameters());
         assertFalse(meta.supportsMultipleOpenResults());
-        assertFalse(meta.supportsGetGeneratedKeys());
+        assertTrue(meta.supportsGetGeneratedKeys());
         assertFalse(meta.supportsStoredFunctionsUsingCallSyntax());
         assertFalse(meta.autoCommitFailureClosesAllResultSets());
         assertTrue(meta.supportsResultSetType(ResultSet.TYPE_FORWARD_ONLY));

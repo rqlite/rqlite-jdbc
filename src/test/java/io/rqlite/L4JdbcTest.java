@@ -541,6 +541,13 @@ public class L4JdbcTest {
       assertEquals("SELECT * FROM table", result7[0].sql);
       assertEquals("SELECT * FROM table2", result7[1].sql);
 
+      // Test semicolons in bracketed and backtick-quoted identifiers
+      var sql8 = "SELECT * FROM [weird;table]; SELECT `back;tick` FROM t";
+      var result8 = split(sql8);
+      assertEquals(2, result8.length);
+      assertEquals("SELECT * FROM [weird;table]", result8[0].sql);
+      assertEquals("SELECT `back;tick` FROM t", result8[1].sql);
+
       // Test null input
       try {
         split(null);

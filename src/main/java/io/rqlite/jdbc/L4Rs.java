@@ -659,7 +659,7 @@ public class L4Rs implements ResultSet {
     if (iface == null) {
       throw badInterface();
     }
-    if (iface == ResultSet.class || iface == Wrapper.class) {
+    if (iface.isAssignableFrom(getClass())) {
       return iface.cast(this);
     }
     throw badUnwrap(iface);
@@ -669,7 +669,7 @@ public class L4Rs implements ResultSet {
     if (iface == null) {
       throw badInterface();
     }
-    return iface == ResultSet.class || iface == Wrapper.class;
+    return iface.isAssignableFrom(getClass());
   }
 
 }

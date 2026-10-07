@@ -67,7 +67,7 @@ public class L4PsPm implements ParameterMetaData {
     if (iface == null) {
       throw badInterface();
     }
-    if (iface == ParameterMetaData.class || iface == Wrapper.class) {
+    if (iface.isAssignableFrom(getClass())) {
       return iface.cast(this);
     }
     throw badUnwrap(iface);
@@ -77,7 +77,7 @@ public class L4PsPm implements ParameterMetaData {
     if (iface == null) {
       throw badInterface();
     }
-    return iface == ParameterMetaData.class || iface == Wrapper.class;
+    return iface.isAssignableFrom(getClass());
   }
 
 }

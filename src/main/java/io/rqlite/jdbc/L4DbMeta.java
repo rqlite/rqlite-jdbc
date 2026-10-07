@@ -17,6 +17,7 @@ public class L4DbMeta implements DatabaseMetaData {
   private final L4Client  client;
   private final L4Conn    conn;
   private String          sqliteVersion;
+  private String          rqliteVersion;
 
   public L4DbMeta(L4Client client, L4Conn conn) {
     this.client = Objects.requireNonNull(client);
@@ -87,6 +88,23 @@ public class L4DbMeta implements DatabaseMetaData {
 
   @Override public String getDriverName() {
     return DriverName;
+  }
+
+  /**
+   * Returns the rqlite build version reported by the server (e.g. {@code 10.5.2}), or null.
+   * Unlike {@link #getDatabaseProductVersion()} (which reports the SQLite engine version),
+   * this identifies the rqlite server itself.
+   */
+  public String getRqliteVersion() throws SQLException {
+    if (rqliteVersion != null) {
+      return rqliteVersion;
+    }
+    try {
+      this.rqliteVersion = client.rqliteVersion();
+      return rqliteVersion;
+    } catch (Exception e) {
+      throw badQuery(e);
+    }
   }
 
   /**
@@ -694,7 +712,7 @@ public class L4DbMeta implements DatabaseMetaData {
   // Advanced Features
 
   @Override public boolean supportsSavepoints() {
-    return true; // SQLite supports SAVEPOINT
+    return false; // rqlite transactions do not expose savepoints through the driver
   }
 
   @Override public boolean supportsNamedParameters() {
@@ -706,7 +724,7 @@ public class L4DbMeta implements DatabaseMetaData {
   }
 
   @Override public boolean supportsGetGeneratedKeys() {
-    return false;
+    return true;
   }
 
   @Override public ResultSet getSuperTypes(String catalog, String schemaPattern, String typeNamePattern) throws SQLException {
@@ -823,7 +841,7 @@ public class L4DbMeta implements DatabaseMetaData {
     if (iface == null) {
       throw badInterface();
     }
-    if (iface == DatabaseMetaData.class || iface == Wrapper.class) {
+    if (iface.isAssignableFrom(getClass())) {
       return iface.cast(this);
     }
     throw badUnwrap(iface);
@@ -833,7 +851,7 @@ public class L4DbMeta implements DatabaseMetaData {
     if (iface == null) {
       throw badInterface();
     }
-    return iface == DatabaseMetaData.class || iface == Wrapper.class;
+    return iface.isAssignableFrom(getClass());
   }
 
 }

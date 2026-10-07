@@ -662,7 +662,7 @@ public class L4Ps extends L4St implements PreparedStatement {
     if (iface == null) {
       throw badInterface();
     }
-    if (iface == PreparedStatement.class || iface == Statement.class || iface == Wrapper.class) {
+    if (iface.isAssignableFrom(getClass())) {
       return iface.cast(this);
     }
     throw badUnwrap(iface);
@@ -672,7 +672,7 @@ public class L4Ps extends L4St implements PreparedStatement {
     if (iface == null) {
       throw badInterface();
     }
-    return iface == PreparedStatement.class || iface == Statement.class || iface == Wrapper.class;
+    return iface.isAssignableFrom(getClass());
   }
 
 }

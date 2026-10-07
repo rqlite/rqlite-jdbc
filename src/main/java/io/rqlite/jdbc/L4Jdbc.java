@@ -736,6 +736,8 @@ public class L4Jdbc {
     var currentStatement = new StringBuilder();
     var inSingleQuote = false;
     var inDoubleQuote = false;
+    var inBracket = false;
+    var inBacktick = false;
     var inSingleLineComment = false;
     var inMultiLineComment = false;
 
@@ -784,6 +786,30 @@ public class L4Jdbc {
       }
       if (c == '"' && !inSingleQuote) {
         inDoubleQuote = true;
+        currentStatement.append(c);
+        continue;
+      }
+      if (inBracket) {
+        currentStatement.append(c);
+        if (c == ']') {
+          inBracket = false;
+        }
+        continue;
+      }
+      if (c == '[' && !inSingleQuote && !inDoubleQuote) {
+        inBracket = true;
+        currentStatement.append(c);
+        continue;
+      }
+      if (inBacktick) {
+        currentStatement.append(c);
+        if (c == '`') {
+          inBacktick = false;
+        }
+        continue;
+      }
+      if (c == '`' && !inSingleQuote && !inDoubleQuote) {
+        inBacktick = true;
         currentStatement.append(c);
         continue;
       }

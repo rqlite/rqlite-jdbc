@@ -58,11 +58,19 @@ public class L4Result {
   }
 
   public String get(String col, List<String> row) {
-    return row.get(indexOf(col));
+    var idx = indexOf(col);
+    if (idx < 0) {
+      throw new IllegalArgumentException("Unknown column: " + col);
+    }
+    return row.get(idx);
   }
 
   public void set(String col, String val, List<String> row) {
-    row.set(indexOf(col), val);
+    var idx = indexOf(col);
+    if (idx < 0) {
+      throw new IllegalArgumentException("Unknown column: " + col);
+    }
+    row.set(idx, val);
   }
 
   public void print(PrintStream out) {
