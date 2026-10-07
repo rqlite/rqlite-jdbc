@@ -22,6 +22,7 @@ public class L4Driver implements Driver {
   private static final String JDBC_URL_PREFIX = "jdbc:rqlite:";
   private static final Logger log = Logger.getLogger(L4Driver.class.getName());
   private static final Map<String, HttpClient> httpClients = new ConcurrentHashMap<>();
+  private static final int MaxCachedHttpClients = 64;
 
   static {
     try {
@@ -79,8 +80,21 @@ public class L4Driver implements Driver {
       return existing;
     }
     var built = buildHttpClient(options);
+    // Bound the cache: shared clients are keyed by target/TLS identity and are normally
+    // few, but guard against unbounded growth from many distinct targets.
+    if (httpClients.size() >= MaxCachedHttpClients) {
+      httpClients.clear();
+    }
     var prev = httpClients.putIfAbsent(key, built);
     return prev != null ? prev : built;
+  }
+
+  /**
+   * Evicts all cached shared {@link HttpClient} instances. Existing connections keep working
+   * (they hold their own references); subsequent connections rebuild as needed.
+   */
+  public static void clearHttpClients() {
+    httpClients.clear();
   }
 
   private HttpClient buildHttpClient(L4Options options) throws SQLException {

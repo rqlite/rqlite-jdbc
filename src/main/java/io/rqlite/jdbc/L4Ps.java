@@ -118,9 +118,13 @@ public class L4Ps extends L4St implements PreparedStatement {
     if (batch.isEmpty()) {
       return new int[0];
     }
+    var maxBatch = client.getOptions().maxBatchStatements;
+    if (maxBatch > 0 && batch.size() > maxBatch) {
+      throw badParam("Batch size [" + batch.size() + "] exceeds maxBatchStatements [" + maxBatch + "]");
+    }
+    var size = batch.size();
     try {
       currentResponse = client.execute(isAutoCommit(), batch.toArray(new L4Statement[0]));
-      batch.clear();
       var updateCounts = new int[currentResponse.results.size()];
       for (int i = 0; i < currentResponse.results.size(); i++) {
         var result = currentResponse.results.get(i);
@@ -129,9 +133,10 @@ public class L4Ps extends L4St implements PreparedStatement {
         }
         updateCounts[i] = result.rowsAffected != null ? result.rowsAffected : 0;
       }
+      batch.clear();
       return updateCounts;
     } catch (Exception e) {
-      var counts = new int[batch.size()];
+      var counts = new int[size];
       Arrays.fill(counts, EXECUTE_FAILED);
       batch.clear();
       throw new BatchUpdateException("Batch execution failed", SqlStateConnectionError, 0, counts, e);

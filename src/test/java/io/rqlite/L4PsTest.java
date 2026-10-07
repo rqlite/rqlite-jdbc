@@ -411,7 +411,7 @@ public class L4PsTest {
           fail("Expected BatchUpdateException");
         } catch (BatchUpdateException e) {
           assertEquals(SqlStateConnectionError, e.getSQLState());
-          assertArrayEquals(new int[]{}, e.getUpdateCounts());
+          assertArrayEquals(new int[]{Statement.EXECUTE_FAILED}, e.getUpdateCounts());
         }
 
         // Verify valid batch

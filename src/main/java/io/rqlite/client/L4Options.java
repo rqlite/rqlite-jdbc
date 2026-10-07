@@ -13,7 +13,8 @@ public class L4Options {
     kFreshnessSec = "freshnessSec", kFreshnessStrict = "freshnessStrict",
     kUser = "user", kPassword = "password", kDbTimeoutSec = "dbTimeoutSec",
     kRetries = "retries", kRedirect = "redirect",
-    kClientCert = "clientCert", kClientKey = "clientKey";
+    kClientCert = "clientCert", kClientKey = "clientKey",
+    kMaxBatchStatements = "maxBatchStatements";
 
   public String  baseUrl, user, password, cacert, clientCert, clientKey;
 
@@ -22,11 +23,12 @@ public class L4Options {
   public boolean wait = true;
   public int     retries = 0;
   public boolean redirect = false;
+  public int     maxBatchStatements = 0;
 
   public L4Level level = L4Level.linearizable;
   public long    linearizableTimeoutSec = 5;
-  public long    timeoutSec = 5;
-  public long    dbTimeoutSec = 0;
+  public volatile long timeoutSec = 5;
+  public volatile long dbTimeoutSec = 0;
 
   public long    freshnessSec = 5;
   public boolean freshnessStrict = false;
@@ -118,6 +120,9 @@ public class L4Options {
       }
       if (p.containsKey(kRedirect)) {
         this.redirect = Boolean.parseBoolean(get(p, kRedirect));
+      }
+      if (p.containsKey(kMaxBatchStatements)) {
+        this.maxBatchStatements = Integer.parseInt(get(p, kMaxBatchStatements));
       }
       if (p.containsKey(kUser)) {
         this.user = get(p, kUser);

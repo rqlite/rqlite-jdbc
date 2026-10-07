@@ -246,6 +246,27 @@ public class L4StTest {
         stmt.close();
       });
 
+      it("Rejects batches exceeding maxBatchStatements", () -> {
+        setupTestTable(rq);
+        var prev = rq.getOptions().maxBatchStatements;
+        rq.getOptions().maxBatchStatements = 2;
+        try {
+          var stmt = new L4St(rq);
+          stmt.addBatch("UPDATE st_test_data SET num_val = 1 WHERE id = 1");
+          stmt.addBatch("UPDATE st_test_data SET num_val = 2 WHERE id = 2");
+          stmt.addBatch("UPDATE st_test_data SET num_val = 3 WHERE id = 1");
+          try {
+            stmt.executeBatch();
+            fail("Expected SQLException for batch over maxBatchStatements");
+          } catch (SQLException e) {
+            assertEquals(SqlStateInvalidParam, e.getSQLState());
+          }
+          stmt.close();
+        } finally {
+          rq.getOptions().maxBatchStatements = prev;
+        }
+      });
+
       it("Tests L4St closeOnCompletion", () -> {
         setupTestTable(rq);
         var stmt = new L4St(rq);

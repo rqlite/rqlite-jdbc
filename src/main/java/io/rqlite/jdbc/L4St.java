@@ -307,6 +307,12 @@ public class L4St implements Statement {
     if (batch.isEmpty()) {
       return new int[0];
     }
+    var maxBatch = client.getOptions().maxBatchStatements;
+    if (maxBatch > 0 && batch.size() > maxBatch) {
+      // Batches are sent atomically (transaction=true); splitting them would break that
+      // guarantee, so exceeding the configured limit is rejected instead.
+      throw badParam("Batch size [" + batch.size() + "] exceeds maxBatchStatements [" + maxBatch + "]");
+    }
     try {
       currentResponse = client.execute(isAutoCommit(), batch.toArray(new L4Statement[0]));
       var updateCounts = new int[currentResponse.results.size()];

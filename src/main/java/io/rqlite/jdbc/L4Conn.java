@@ -152,7 +152,7 @@ public class L4Conn implements Connection {
 
   @Override public String getCatalog() throws SQLException {
     checkClosed();
-    return "";
+    return L4Db.Main;
   }
 
   @Override public void setTransactionIsolation(int level) throws SQLException {

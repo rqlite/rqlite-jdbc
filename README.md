@@ -102,6 +102,7 @@ These options come from `rqlite`'s [Developer Guide](https://rqlite.io/docs/api)
 | `wait`                      | `boolean` | `true`                   | If `true`, waits for the request to be processed by the RQLite leader.      |
 | `retries`                   | `int`     | `0`                      | Number of rqlite request-forwarding retries.                                |
 | `redirect`                  | `boolean` | `false`                  | If `true`, follow rqlite leader redirects (HTTP 301) transparently.         |
+| `maxBatchStatements`        | `int`     | `0`                      | If `> 0`, `executeBatch` rejects batches larger than this (see Caveats).    |
 | `level`                     | `L4Level` | `L4Level.linearizable`   | Consistency level for queries (`none`, `weak`, `strong`, `linearizable`).   |
 | `linearizableTimeoutSec`    | `long`    | `5`                      | Timeout for linearizable consistency queries in seconds.                    |
 | `freshnessSec`              | `long`    | `5`                      | Maximum age of data for freshness-based queries in seconds.                 |
@@ -117,11 +118,19 @@ String url = "jdbc:rqlite:http://localhost:4001?timeoutSec=5&level=strong&freshn
 
 ### Memory Usage
 
-Result sets are held in memory (mapped from rqlite’s JSON responses to JDBC ResultSet). Write queries that return small datasets to avoid memory issues.
+rqlite returns a single JSON document per request, so result sets are fully materialized in memory (mapped from the JSON response to a JDBC `ResultSet`). `setMaxRows`/`setFetchSize` only trim the client-side view — they do **not** reduce the server payload. Keep queries returning large datasets narrow (e.g. add `LIMIT`/`WHERE`) to bound memory.
 
 ### Metadata Performance
 
 Schema metadata (`getColumns`, `getPrimaryKeys`, `getIndexInfo`, `getImportedKeys`, `getExportedKeys`) is fetched using a constant number of batched `pragma_*` table-valued queries, instead of one round-trip per table or index.
+
+### Batch Size
+
+`executeBatch` sends all statements in one atomic (`transaction=true`) request. To bound request size, set `maxBatchStatements`; when a batch exceeds it, `executeBatch` fails fast with a `SQLException` rather than splitting the batch (which would break atomicity). The default `0` imposes no limit.
+
+### Concurrency
+
+JDBC `Connection`, `Statement`, and `ResultSet` objects are not thread-safe and should not be shared across threads without external synchronization. Configuration is per connection; `setQueryTimeout`/`setNetworkTimeout` may be called concurrently with statement execution.
 
 ### Catalog Support
 

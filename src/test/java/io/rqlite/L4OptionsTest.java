@@ -63,6 +63,14 @@ public class L4OptionsTest {
       assertEquals("/tmp/client.key", o.clientKey);
     });
 
+    it("Parses maxBatchStatements", () -> {
+      var p = new Properties();
+      p.setProperty(L4Options.kBaseUrl, "http://example:4001");
+      p.setProperty(L4Options.kMaxBatchStatements, "3");
+      var o = new L4Options(p);
+      assertEquals(3, o.maxBatchStatements);
+    });
+
     it("Rejects invalid mTLS client key material", () -> {
       try {
         io.rqlite.client.L4Http.newMTlsClient(null, "/nonexistent/client.crt", "/nonexistent/client.key", 5);
@@ -118,6 +126,10 @@ public class L4OptionsTest {
 
       assertSame(ca, cb);
       assertNotSame(ca, cc);
+
+      L4Driver.clearHttpClients();
+      var ca2 = driver.createHttpClient(a);
+      assertNotSame(ca, ca2);
     });
   }
 

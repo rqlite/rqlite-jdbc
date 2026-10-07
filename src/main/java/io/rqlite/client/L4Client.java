@@ -252,7 +252,7 @@ public class L4Client implements Closeable {
     return resp.body();
   }
 
-  public void withQueryTimeoutSec(long queryTimeoutSec) {
+  public synchronized void withQueryTimeoutSec(long queryTimeoutSec) {
     if (queryTimeoutSec < 0) {
       throw new IllegalArgumentException(format("Invalid timeout [%d]", queryTimeoutSec));
     }
@@ -263,7 +263,7 @@ public class L4Client implements Closeable {
     return this.options.dbTimeoutSec;
   }
 
-  public void withNetworkTimeoutSec(long networkTimeoutSec) {
+  public synchronized void withNetworkTimeoutSec(long networkTimeoutSec) {
     if (networkTimeoutSec < 0) {
       throw new IllegalArgumentException(format("Invalid timeout [%d]", networkTimeoutSec));
     }

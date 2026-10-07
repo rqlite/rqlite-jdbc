@@ -134,6 +134,12 @@ public class L4DriverTest {
         }
       });
 
+      it("Reports a consistent catalog name", () -> {
+        try (var conn = DriverManager.getConnection(L4Tests.rqUrl)) {
+          assertEquals(L4Db.Main, conn.getCatalog());
+        }
+      });
+
       it("Closes the data source", ds::close);
     }
   }
