@@ -100,7 +100,7 @@ public class L4StTest {
           stmt.executeQuery("SELECT * FROM nonexistent_table");
           fail("Expected SQLException for invalid table");
         } catch (SQLException e) {
-          assertEquals(SqlStateConnectionError, e.getSQLState());
+          assertEquals(SqlStateGeneralError, e.getSQLState());
         }
         stmt.close();
       });
@@ -126,7 +126,7 @@ public class L4StTest {
           stmt.executeUpdate("UPDATE nonexistent_table SET num_val = 1");
           fail("Expected SQLException for invalid table");
         } catch (SQLException e) {
-          assertEquals(SqlStateConnectionError, e.getSQLState());
+          assertEquals(SqlStateGeneralError, e.getSQLState());
         }
         stmt.close();
       });
@@ -237,10 +237,9 @@ public class L4StTest {
         try {
           stmt.executeBatch();
           fail("Expected BatchUpdateException");
-        } catch (SQLException e) {
-          assertEquals(SqlStateConnectionError, e.getSQLState());
-          var bue = (BatchUpdateException) e.getCause();
-          assertArrayEquals(new int[]{1, 0}, bue.getUpdateCounts());
+        } catch (BatchUpdateException e) {
+          assertEquals(SqlStateGeneralError, e.getSQLState());
+          assertArrayEquals(new int[]{1, 0}, e.getUpdateCounts());
         }
 
         stmt.close();

@@ -62,7 +62,7 @@ public class L4Client implements Closeable {
       return null;
     }
     if (hop >= MaxRedirects) {
-      throw new IllegalStateException(format("Too many redirects [%d]", hop));
+      throw tooManyRedirects(hop);
     }
     var loc = res.headers().firstValue("Location").orElse(null);
     return loc == null || loc.isEmpty() ? null : loc;
@@ -96,7 +96,7 @@ public class L4Client implements Closeable {
         currentUrl = next;
       }
     } catch (Exception e) {
-      throw new IllegalStateException(format("HTTP %s error: (%d) [%s]", method, statusCode, currentUrl), e);
+      throw httpTransportError(method, statusCode, currentUrl, e);
     }
   }
 
@@ -140,7 +140,7 @@ public class L4Client implements Closeable {
     var node = Json.parse(resp.body()).asObject();
     var r = response(resp.statusCode(), node);
     if (r.error != null) {
-      throw new IllegalStateException(r.error);
+      throw requestError(r.error);
     }
     return r;
   }
@@ -245,7 +245,7 @@ public class L4Client implements Closeable {
 
   public synchronized void withQueryTimeoutSec(long queryTimeoutSec) {
     if (queryTimeoutSec < 0) {
-      throw new IllegalArgumentException(format("Invalid timeout [%d]", queryTimeoutSec));
+      throw invalidTimeout(queryTimeoutSec);
     }
     this.options.dbTimeoutSec = queryTimeoutSec;
   }
@@ -256,7 +256,7 @@ public class L4Client implements Closeable {
 
   public synchronized void withNetworkTimeoutSec(long networkTimeoutSec) {
     if (networkTimeoutSec < 0) {
-      throw new IllegalArgumentException(format("Invalid timeout [%d]", networkTimeoutSec));
+      throw invalidTimeout(networkTimeoutSec);
     }
     this.options.timeoutSec = networkTimeoutSec;
   }

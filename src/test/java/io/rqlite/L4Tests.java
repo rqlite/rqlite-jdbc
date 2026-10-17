@@ -41,6 +41,25 @@ public class L4Tests {
     return new L4Client(RQLITE_URL, L4Http.defaultHttpClient(options.timeoutSec).build(), options);
   }
 
+  /**
+   * Returns true when the connected rqlite server reports structured {@code error_v2} errors
+   * (rqlite v10.6.0 and later), so tests can assert SQLite result codes only where they exist.
+   */
+  public static boolean supportsErrorV2() {
+    var v = localClient().rqliteVersion();
+    if (v == null) {
+      return false;
+    }
+    try {
+      var parts = v.split("\\.");
+      int major = Integer.parseInt(parts[0]);
+      int minor = Integer.parseInt(parts[1]);
+      return major > 10 || (major == 10 && minor >= 6);
+    } catch (RuntimeException e) {
+      return false;
+    }
+  }
+
   public static void setupPreparedStatementTestTable(L4Client rq) {
     var dr = rq.executeSingle("DROP TABLE IF EXISTS ps_test_data");
     assertEquals(200, dr.statusCode);

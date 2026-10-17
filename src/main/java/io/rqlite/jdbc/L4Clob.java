@@ -22,11 +22,7 @@ public class L4Clob extends L4Lob implements Clob {
   }
 
   private void updateSerialClob() throws SQLException {
-    try {
-      this.serialClob = new SerialClob(data.toString().toCharArray());
-    } catch (Exception e) {
-      throw badUpdate(e);
-    }
+    this.serialClob = new SerialClob(data.toString().toCharArray());
   }
 
   @Override public long length() throws SQLException {
@@ -90,7 +86,7 @@ public class L4Clob extends L4Lob implements Clob {
         try {
           setString(pos, str);
         } catch (Exception e) {
-          throw new IllegalStateException(e);
+          throw lobWriteFailed(e);
         }
       }
     };
@@ -103,7 +99,7 @@ public class L4Clob extends L4Lob implements Clob {
         try {
           setString(pos, new String(b, StandardCharsets.US_ASCII));
         } catch (SQLException e) {
-          throw new IOException(e);
+          throw streamWriteFailed(e);
         }
       }
     };

@@ -13,6 +13,8 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
 
+import static io.rqlite.client.L4Err.*;
+
 public class L4Http {
 
   public static HttpClient.Builder defaultHttpClient(long timeoutSec) {
@@ -81,7 +83,7 @@ public class L4Http {
       }
     }
     if (certList.isEmpty()) {
-      throw new IllegalArgumentException("No certificates found in: " + clientCertPath);
+      throw noClientCertificates(clientCertPath);
     }
     var certs = certList.toArray(new java.security.cert.Certificate[0]);
 
@@ -122,9 +124,7 @@ public class L4Http {
     var start = pem.indexOf(header);
     var end = pem.indexOf(footer);
     if (start < 0 || end < 0) {
-      throw new IllegalArgumentException(
-        "Client key must be an unencrypted PKCS#8 PEM (" + header + "): " + path
-      );
+      throw invalidClientKey(path);
     }
     var base64 = pem.substring(start + header.length(), end).replaceAll("\\s", "");
     var der = Base64.getDecoder().decode(base64);
@@ -136,7 +136,7 @@ public class L4Http {
         // try the next algorithm
       }
     }
-    throw new IllegalArgumentException("Unsupported client private key algorithm in: " + path);
+    throw unsupportedKeyAlgorithm(path);
   }
 
 }

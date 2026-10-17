@@ -65,11 +65,11 @@ public class L4Jdbc {
   public static String loadResourceAsString(String resourcePath) {
     try (var is = L4Jdbc.class.getResourceAsStream(resourcePath)) {
       if (is == null) {
-        throw new IOException("Resource not found: " + resourcePath);
+        throw resourceNotFound(resourcePath);
       }
       return new String(is.readAllBytes(), StandardCharsets.UTF_8);
     } catch (Exception e) {
-      throw new IllegalArgumentException(e);
+      throw resourceLoadFailed(e);
     }
   }
 
@@ -485,7 +485,7 @@ public class L4Jdbc {
           if (x instanceof byte[]) {
             return x;
           }
-          throw badParam("Invalid BLOB data");
+          throw invalidBlob();
         default:
           throw notSupported(format("Unsupported SQL type: [%s]", targetSqlType));
       }
@@ -496,7 +496,7 @@ public class L4Jdbc {
 
   public static int getJdbcType(String rqliteType) {
     if (rqliteType == null) {
-      throw new IllegalArgumentException("type cannot be null");
+      throw nullJdbcType();
     }
     if (rqliteType.isEmpty()) {
       return NULL; // SELECT NULL AS TABLE_CAT, etc...
@@ -752,7 +752,7 @@ public class L4Jdbc {
 
   public static L4Statement[] split(String rawSql) {
     if (rawSql == null) {
-      throw new IllegalArgumentException("SQL string cannot be null");
+      throw nullSql();
     }
     var sql = rawSql.trim();
     if (sql.isEmpty()) {

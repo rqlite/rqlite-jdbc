@@ -230,7 +230,7 @@ public class L4Rs implements ResultSet {
   @Override public SQLWarning getWarnings() throws SQLException {
     checkClosed();
     if (result.error != null) {
-      return warnQuery(result.error);
+      return warnQuery(result.error.message);
     }
     return null;
   }

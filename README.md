@@ -107,6 +107,7 @@ These options come from `rqlite`'s [Developer Guide](https://rqlite.io/docs/api)
 | `linearizableTimeoutSec`    | `long`    | `5`                      | Timeout for linearizable consistency queries in seconds.                    |
 | `freshnessSec`              | `long`    | `5`                      | Maximum age of data for freshness-based queries in seconds.                 |
 | `freshnessStrict`           | `boolean` | `false`                  | If `true`, enforces strict freshness for queries.                           |
+| `errors`                    | `String`  | `""`                     | Error response format: empty = both, `v1` = legacy string only, `v2` = structured only (rqlite ≥ v10.6.0). |
 
 Example JDBC URL:
 
@@ -147,6 +148,20 @@ Two independent timeouts are supported, mirroring the JDBC standard:
 
 rqlite reports statement errors inside an HTTP 200 response. The driver surfaces these as `SQLException`s (mapped consistently at the JDBC boundary), so failed statements, batches, and commits throw rather than being silently ignored.
 
+Since rqlite **v10.6.0**, each failed statement also carries a structured `error_v2` object with the underlying [SQLite result codes](https://www.sqlite.org/rescode.html). The driver decodes both the deprecated `error` string and `error_v2`, and maps a SQLite code to a standard JDBC `SQLState` (for example a `SQLITE_CONSTRAINT` becomes `23000`) while exposing the SQLite extended code via `SQLException.getErrorCode()`. Against older servers only the legacy string is available, so the driver falls back to it (general error `HY000`).
+
+Use the `errors` option to choose the wire format (`v1`, `v2`, or empty for both). This only affects response size; the driver decodes every form regardless.
+
+```java
+try (var conn = DriverManager.getConnection("jdbc:rqlite:http://localhost:4001?errors=v2");
+     var stmt = conn.createStatement()) {
+  stmt.executeUpdate("INSERT INTO users(id) VALUES (1)");
+} catch (SQLException e) {
+  String state = e.getSQLState(); // e.g. "23000" for a constraint violation
+  int code = e.getErrorCode();    // e.g. 2067 (SQLITE_CONSTRAINT_UNIQUE)
+}
+```
+
 ### BLOB Parameters
 
 `setBytes`, `setBlob`, and binary stream setters send data as a SQLite `x'hex'` literal, which rqlite stores as a real `BLOB`. (rqlite treats base64 strings as `TEXT`, so values read back should be accessed via `getBytes`/`getBlob`.)
@@ -165,7 +180,7 @@ Set `clientCert` and `clientKey` to enable client-certificate authentication. Th
 
 ### rqlite Server Version
 
-`L4DbMeta.getRqliteVersion()` returns the rqlite build version (e.g. `10.5.2`) parsed from the server's `/status` endpoint. `getDatabaseProductName()`/`getDatabaseProductVersion()` continue to report the SQLite engine (`SQLite`), which ORMs use for dialect detection.
+`L4DbMeta.getRqliteVersion()` returns the rqlite build version (e.g. `10.6.1`) parsed from the server's `/status` endpoint. `getDatabaseProductName()`/`getDatabaseProductVersion()` continue to report the SQLite engine (`SQLite`), which ORMs use for dialect detection.
 
 ### Transaction Limitations
 

@@ -704,7 +704,7 @@ public class L4DbMeta implements DatabaseMetaData {
 
   @Override public Connection getConnection() throws SQLException {
     if (conn == null) {
-      throw badQuery("No connection available");
+      throw noConnection();
     }
     return conn;
   }

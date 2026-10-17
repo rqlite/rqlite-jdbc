@@ -10,7 +10,7 @@ public interface L4Block<T> {
     try {
       return block.get();
     } catch (Exception e) {
-      throw new SQLException(e.getMessage(), L4Err.SqlStateGeneralError, e);
+      throw L4Err.blockExecutionFailed(e);
     }
   }
 
