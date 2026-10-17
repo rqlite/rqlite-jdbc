@@ -410,7 +410,7 @@ public class L4PsTest {
           invalidPs.executeBatch();
           fail("Expected BatchUpdateException");
         } catch (BatchUpdateException e) {
-          assertEquals(SqlStateConnectionError, e.getSQLState());
+          assertEquals(SqlStateGeneralError, e.getSQLState());
           assertArrayEquals(new int[]{Statement.EXECUTE_FAILED}, e.getUpdateCounts());
         }
 
@@ -564,7 +564,7 @@ public class L4PsTest {
           invalidPs.executeQuery();
           fail("Expected SQLException for invalid table");
         } catch (SQLException e) {
-          assertEquals(SqlStateConnectionError, e.getSQLState());
+          assertEquals(SqlStateGeneralError, e.getSQLState());
         }
 
         // Test clearParameters
@@ -880,7 +880,7 @@ public class L4PsTest {
           ps.setObject(1, "test", Types.ARRAY, 0);
           fail("Expected SQLException for unsupported SQL type");
         } catch (SQLException e) {
-          assertEquals(SqlStateInvalidParam, e.getSQLState());
+          assertEquals(SqlStateFeatureNotSupported, e.getSQLState());
         }
 
         // Test invalid parameter conversion
@@ -888,7 +888,7 @@ public class L4PsTest {
           ps.setObject(1, "invalid", Types.NUMERIC, 2); // Invalid numeric string
           fail("Expected SQLException for invalid conversion");
         } catch (SQLException e) {
-          assertEquals(SqlStateInvalidParam, e.getSQLState());
+          assertEquals(SqlStateInvalidType, e.getSQLState());
         }
 
         ps.close();

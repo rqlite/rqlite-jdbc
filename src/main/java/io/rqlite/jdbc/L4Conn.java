@@ -20,7 +20,7 @@ public class L4Conn implements Connection {
 
   public L4Conn(L4Client client) throws SQLException {
     if (client == null) {
-      throw new SQLException("L4Client cannot be null", SqlStateInvalidParam);
+      throw badParam("L4Client cannot be null");
     }
     this.client = client;
     this.isClosed = false;
@@ -48,7 +48,7 @@ public class L4Conn implements Connection {
     validateResultSetParams(resultSetType, resultSetConcurrency);
     if (resultSetHoldability != ResultSet.HOLD_CURSORS_OVER_COMMIT &&
       resultSetHoldability != ResultSet.CLOSE_CURSORS_AT_COMMIT) {
-      throw badParam("Invalid holdability");
+      throw invalidHoldability(resultSetHoldability);
     }
   }
 
@@ -99,7 +99,7 @@ public class L4Conn implements Connection {
         if (res != null && res.results != null) {
           for (var result : res.results) {
             if (result != null && result.error != null) {
-              errors.add(result.error);
+              errors.add(result.error.message);
             }
           }
         }
@@ -209,7 +209,7 @@ public class L4Conn implements Connection {
     checkClosed();
     if (holdability != ResultSet.HOLD_CURSORS_OVER_COMMIT &&
       holdability != ResultSet.CLOSE_CURSORS_AT_COMMIT) {
-      throw badParam(format("Invalid holdability: [%d]", holdability));
+      throw invalidHoldability(holdability);
     }
     this.holdability = holdability;
   }
@@ -313,7 +313,7 @@ public class L4Conn implements Connection {
       checkClosed();
       clientInfo.setProperty(name, value);
     } catch (SQLException e) {
-      throw new SQLClientInfoException(e.getMessage(), e.getSQLState(), null, e);
+      throw clientInfoError(e);
     }
   }
 
@@ -325,7 +325,7 @@ public class L4Conn implements Connection {
         clientInfo.putAll(properties);
       }
     } catch (SQLException e) {
-      throw new SQLClientInfoException(e.getMessage(), e.getSQLState(), null, e);
+      throw clientInfoError(e);
     }
   }
 
@@ -364,7 +364,7 @@ public class L4Conn implements Connection {
       return;
     }
     if (executor == null) {
-      throw badParam("Executor cannot be null");
+      throw nullExecutor();
     }
     executor.execute(() -> {
       try {
@@ -378,7 +378,7 @@ public class L4Conn implements Connection {
   @Override public void setNetworkTimeout(Executor executor, int milliseconds) throws SQLException {
     checkClosed();
     if (executor == null) {
-      throw badParam("Executor cannot be null");
+      throw nullExecutor();
     }
     if (milliseconds < 0) {
       throw badParam("Network timeout cannot be negative");

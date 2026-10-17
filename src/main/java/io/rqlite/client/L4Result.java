@@ -6,6 +6,7 @@ import java.util.*;
 import java.util.function.BiConsumer;
 
 import static io.rqlite.client.L4Json.*;
+import static io.rqlite.client.L4Err.*;
 
 public class L4Result {
 
@@ -14,11 +15,13 @@ public class L4Result {
   public List<List<String>> values;
   public Long lastInsertId;
   public Integer rowsAffected;
-  public String error;
+  public L4Error error;
 
   public L4Result(JsonObject json) {
-    if (json.get("error") != null) {
-      this.error = json.getString("error", "Unknown error");
+    var errorV2 = json.get("error_v2");
+    var legacyError = json.get("error") != null ? json.getString("error", "Unknown error") : null;
+    if (errorV2 != null || legacyError != null) {
+      this.error = L4Error.parse(errorV2 != null ? errorV2.asObject() : null, legacyError);
     } else {
       this.columns = json.get("columns") != null ? toStringList(json.get("columns").asArray()) : new ArrayList<>();
       this.types = json.get("types") != null ? toStringList(json.get("types").asArray()) : new ArrayList<>();
@@ -60,7 +63,7 @@ public class L4Result {
   public String get(String col, List<String> row) {
     var idx = indexOf(col);
     if (idx < 0) {
-      throw new IllegalArgumentException("Unknown column: " + col);
+      throw unknownColumn(col);
     }
     return row.get(idx);
   }
@@ -68,7 +71,7 @@ public class L4Result {
   public void set(String col, String val, List<String> row) {
     var idx = indexOf(col);
     if (idx < 0) {
-      throw new IllegalArgumentException("Unknown column: " + col);
+      throw unknownColumn(col);
     }
     row.set(idx, val);
   }

@@ -23,11 +23,8 @@ public class L4PsPm implements ParameterMetaData {
 
   private Map<Integer, String> inferredTypes() {
     if (inferredTypes == null) {
-      try {
-        inferredTypes = L4ParamTypes.infer(client, statement.sql, placeholders);
-      } catch (Exception e) {
-        inferredTypes = new HashMap<>();
-      }
+      // L4ParamTypes.infer is best-effort and never throws.
+      inferredTypes = L4ParamTypes.infer(client, statement.sql, placeholders);
     }
     return inferredTypes;
   }

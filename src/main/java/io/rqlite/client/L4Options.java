@@ -2,6 +2,7 @@ package io.rqlite.client;
 
 import java.util.Properties;
 
+import static io.rqlite.client.L4Err.*;
 import static java.lang.String.format;
 
 public class L4Options {
@@ -14,9 +15,17 @@ public class L4Options {
     kUser = "user", kPassword = "password", kDbTimeoutSec = "dbTimeoutSec",
     kRetries = "retries", kRedirect = "redirect",
     kClientCert = "clientCert", kClientKey = "clientKey",
-    kMaxBatchStatements = "maxBatchStatements";
+    kMaxBatchStatements = "maxBatchStatements", kErrors = "errors";
 
   public String  baseUrl, user, password, cacert, clientCert, clientKey;
+
+  /**
+   * Selects which error fields rqlite renders for a failed statement: {@code ""} (unset) receives
+   * both the legacy {@code error} string and the structured {@code error_v2} object, {@code "v1"}
+   * only the legacy string, {@code "v2"} only the structured object. Ignored by rqlite versions
+   * older than v10.6.0.
+   */
+  public String  errors = "";
 
   public boolean insecure;
   public boolean queue = false;
@@ -76,7 +85,8 @@ public class L4Options {
       freshnessStrict ? kv("freshness_strict", true) : null,
       dbTimeoutSec > 0 ? kv("db_timeout", format("%ds", dbTimeoutSec)) : null,
       retries > 0 ? kv("retries", retries) : null,
-      redirect ? kv("redirect", true) : null
+      redirect ? kv("redirect", true) : null,
+      errors != null && !errors.isEmpty() ? kv("errors", errors) : null
     };
     var params = String.join("&", filterNulls(pairs));
     return String.format("?%s", params);
@@ -84,6 +94,20 @@ public class L4Options {
 
   public static String get(Properties p, String k) {
     return (String) p.get(k);
+  }
+
+  /**
+   * Validates the {@code errors} option: {@code ""}, {@code "v1"} or {@code "v2"} (case-insensitive).
+   */
+  private static String validateErrors(String value) {
+    var v = value == null ? "" : value.trim().toLowerCase();
+    if (v.isEmpty()) {
+      return "";
+    }
+    if (!v.equals("v1") && !v.equals("v2")) {
+      throw invalidErrorsFormat(value);
+    }
+    return v;
   }
 
   /**
@@ -132,6 +156,8 @@ public class L4Options {
       if (v != null) this.redirect = Boolean.parseBoolean(v);
       v = getCI(p, kMaxBatchStatements);
       if (v != null) this.maxBatchStatements = Integer.parseInt(v);
+      v = getCI(p, kErrors);
+      if (v != null) this.errors = validateErrors(v);
       v = getCI(p, kUser);
       if (v != null) this.user = v;
       v = getCI(p, kPassword);
@@ -145,7 +171,7 @@ public class L4Options {
       v = getCI(p, kInsecure);
       if (v != null) this.insecure = Boolean.parseBoolean(v);
     } catch (Exception e) {
-      throw new IllegalStateException(e);
+      throw optionsUpdateFailed(e);
     }
   }
 

@@ -22,11 +22,7 @@ public class L4Blob extends L4Lob implements Blob {
   }
 
   private void updateSerialBlob() throws SQLException {
-    try {
-      this.serialBlob = new SerialBlob(data.toByteArray());
-    } catch (Exception e) {
-      throw badUpdate(e);
-    }
+    this.serialBlob = new SerialBlob(data.toByteArray());
   }
 
   @Override public long length() throws SQLException {
@@ -61,20 +57,16 @@ public class L4Blob extends L4Lob implements Blob {
 
   @Override public int setBytes(long pos, byte[] bytes) throws SQLException {
     checkClosed();
-    try {
-      var current = data.toByteArray();
-      data.reset();
-      int start = (int) pos - 1;
-      data.write(current, 0, start);
-      data.write(bytes);
-      if (start + bytes.length < current.length) {
-        data.write(current, start + bytes.length, current.length);
-      }
-      updateSerialBlob();
-      return bytes.length;
-    } catch (IOException e) {
-      throw badUpdate(e);
+    var current = data.toByteArray();
+    data.reset();
+    int start = (int) pos - 1;
+    data.write(current, 0, start);
+    data.write(bytes, 0, bytes.length);
+    if (start + bytes.length < current.length) {
+      data.write(current, start + bytes.length, current.length);
     }
+    updateSerialBlob();
+    return bytes.length;
   }
 
   @Override public int setBytes(long pos, byte[] bytes, int offset, int len) throws SQLException {
@@ -91,7 +83,7 @@ public class L4Blob extends L4Lob implements Blob {
         try {
           setBytes(pos, b);
         } catch (SQLException e) {
-          throw new IOException(e);
+          throw streamWriteFailed(e);
         }
       }
     };

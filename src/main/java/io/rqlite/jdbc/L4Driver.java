@@ -29,7 +29,7 @@ public class L4Driver implements Driver {
     try {
       DriverManager.registerDriver(new L4Driver());
     } catch (SQLException e) {
-      throw new RuntimeException("Failed to register L4Driver", e);
+      throw driverRegistrationFailed(e);
     }
   }
 
@@ -136,7 +136,7 @@ public class L4Driver implements Driver {
       }
       return client;
     } catch (Exception e) {
-      throw new SQLException("Failed to create L4Client: " + e.getMessage(), e);
+      throw clientCreationFailed(e);
     }
   }
 
@@ -192,7 +192,8 @@ public class L4Driver implements Driver {
       new Prop(kRetries, "Number of request-forwarding retries", () -> String.valueOf(d.retries)),
       new Prop(kRedirect, "Follow rqlite leader redirects (HTTP 301)", () -> String.valueOf(d.redirect)),
       new Prop(kClientCert, "Path to PEM client certificate for mTLS", () -> null),
-      new Prop(kClientKey, "Path to unencrypted PKCS#8 PEM client key for mTLS", () -> null)
+      new Prop(kClientKey, "Path to unencrypted PKCS#8 PEM client key for mTLS", () -> null),
+      new Prop(kErrors, "Error response format: empty = both, v1, v2 (rqlite >= v10.6.0)", () -> d.errors)
     };
     var props = new DriverPropertyInfo[defs.length];
     for (int i = 0; i < defs.length; i++) {

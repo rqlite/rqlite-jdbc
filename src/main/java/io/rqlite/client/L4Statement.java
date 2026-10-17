@@ -7,6 +7,8 @@ import io.rqlite.json.JsonValue;
 
 import java.util.*;
 
+import static io.rqlite.client.L4Err.*;
+
 public class L4Statement {
 
   public String sql;
@@ -19,7 +21,7 @@ public class L4Statement {
   }
 
   private void badParams() {
-    throw new IllegalStateException("Cannot mix positional and named parameters in the same statement");
+    throw mixedStatementParams();
   }
 
   private void checkPositionalParams() {
@@ -37,7 +39,7 @@ public class L4Statement {
   public L4Statement withPositionalParam(int paramIndex, Object param) {
     checkNamedParams();
     if (paramIndex < 0) {
-      throw new IllegalArgumentException("Parameter index must be non-negative: " + paramIndex);
+      throw negativeParamIndex(paramIndex);
     }
     while (positionalParams.size() <= paramIndex) {
       positionalParams.add(null);
@@ -74,7 +76,7 @@ public class L4Statement {
 
   public JsonArray build() {
     if (sql == null || sql.trim().isEmpty()) {
-      throw new IllegalStateException("SQL statement cannot be null or empty");
+      throw emptyStatement();
     }
     var out = new JsonArray();
     out.add(sql);
