@@ -150,28 +150,31 @@ public class L4ErrorTest {
       if (!L4Tests.runIntegrationTests) {
         return;
       }
+      // SQLite result codes are only reported by rqlite v10.6.0 and later; older servers send
+      // only the legacy error string, so the driver falls back to HY000 / code 0.
+      var v2 = L4Tests.supportsErrorV2();
       try (var conn = DriverManager.getConnection(L4Tests.rqUrl + "?errors=v2");
            var stmt = conn.createStatement()) {
         stmt.executeUpdate("DROP TABLE IF EXISTS err_map");
         stmt.executeUpdate("CREATE TABLE err_map (id INTEGER PRIMARY KEY, name TEXT UNIQUE)");
         stmt.executeUpdate("INSERT INTO err_map (id, name) VALUES (1, 'a')");
 
-        // Missing table: SQLITE_ERROR (1) -> HY000 / 1.
+        // Missing table: SQLITE_ERROR (1) -> HY000; vendor code 1 only with error_v2.
         try {
           stmt.executeQuery("SELECT * FROM no_such_table");
           fail("Expected SQLException for a missing table");
         } catch (SQLException e) {
           assertEquals(SqlStateGeneralError, e.getSQLState());
-          assertEquals(1, e.getErrorCode());
+          assertEquals(v2 ? 1 : 0, e.getErrorCode());
         }
 
-        // UNIQUE violation: SQLITE_CONSTRAINT_UNIQUE (2067) -> 23000 / 2067.
+        // UNIQUE violation: SQLITE_CONSTRAINT_UNIQUE (2067) -> 23000 / 2067 only with error_v2.
         try {
           stmt.executeUpdate("INSERT INTO err_map (id, name) VALUES (2, 'a')");
           fail("Expected SQLException for a unique violation");
         } catch (SQLException e) {
-          assertEquals(SqlStateIntegrityConstraint, e.getSQLState());
-          assertEquals(2067, e.getErrorCode());
+          assertEquals(v2 ? SqlStateIntegrityConstraint : SqlStateGeneralError, e.getSQLState());
+          assertEquals(v2 ? 2067 : 0, e.getErrorCode());
         }
 
         stmt.executeUpdate("DROP TABLE err_map");

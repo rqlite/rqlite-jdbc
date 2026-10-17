@@ -180,7 +180,7 @@ Set `clientCert` and `clientKey` to enable client-certificate authentication. Th
 
 ### rqlite Server Version
 
-`L4DbMeta.getRqliteVersion()` returns the rqlite build version (e.g. `10.5.2`) parsed from the server's `/status` endpoint. `getDatabaseProductName()`/`getDatabaseProductVersion()` continue to report the SQLite engine (`SQLite`), which ORMs use for dialect detection.
+`L4DbMeta.getRqliteVersion()` returns the rqlite build version (e.g. `10.6.1`) parsed from the server's `/status` endpoint. `getDatabaseProductName()`/`getDatabaseProductVersion()` continue to report the SQLite engine (`SQLite`), which ORMs use for dialect detection.
 
 ### Transaction Limitations
 
